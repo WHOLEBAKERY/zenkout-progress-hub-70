@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Calendar, Download, Edit3, Upload, RefreshCw, Settings, Moon, Sun, Palette, Image, Smartphone, Desktop } from 'lucide-react';
+import { Calendar, Download, Edit3, Upload, RefreshCw, Settings, Moon, Sun, Palette, Image, Smartphone, Monitor } from 'lucide-react';
 import ProfileModal from '@/components/ProfileModal';
 import ColorSchemeModal from '@/components/ColorSchemeModal';
 import DeveloperModal from '@/components/DeveloperModal';
@@ -141,7 +141,7 @@ const Index = () => {
       const now = new Date();
       const tomorrow = new Date(now);
       tomorrow.setHours(24, 0, 0, 0);
-      const diff = tomorrow - now;
+      const diff = tomorrow.getTime() - now.getTime();
       const hours = Math.floor(diff / (1000 * 60 * 60));
       const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
       const seconds = Math.floor((diff % (1000 * 60)) / 1000);
@@ -149,7 +149,7 @@ const Index = () => {
 
       const missedTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 0, 0, 0);
       if (now >= missedTime) missedTime.setDate(missedTime.getDate() + 1);
-      const missedDiff = missedTime - now;
+      const missedDiff = missedTime.getTime() - now.getTime();
       const mHours = Math.floor(missedDiff / (1000 * 60 * 60));
       const mMinutes = Math.floor((missedDiff % (1000 * 60 * 60)) / (1000 * 60));
       const mSeconds = Math.floor((missedDiff % (1000 * 60)) / 1000);
@@ -502,7 +502,7 @@ const Index = () => {
               onClick={() => setIsMobileView(!isMobileView)}
               className="bg-indigo-500 hover:bg-indigo-600"
             >
-              {isMobileView ? <Desktop className="w-4 h-4 mr-2" /> : <Smartphone className="w-4 h-4 mr-2" />}
+              {isMobileView ? <Monitor className="w-4 h-4 mr-2" /> : <Smartphone className="w-4 h-4 mr-2" />}
               View
             </Button>
             

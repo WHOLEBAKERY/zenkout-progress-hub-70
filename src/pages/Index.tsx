@@ -13,6 +13,20 @@ import CalendarModal from '@/components/CalendarModal';
 import ImageModal from '@/components/ImageModal';
 import { useToast } from "@/hooks/use-toast";
 
+// Define types for better TypeScript support
+interface WorkoutRecord {
+  workout: string;
+  status: "pending" | "completed" | "missed" | "rest";
+}
+
+interface WorkoutRecords {
+  [dateKey: string]: WorkoutRecord;
+}
+
+interface WorkoutPlan {
+  [day: string]: string;
+}
+
 const Index = () => {
   const { toast } = useToast();
 
@@ -53,10 +67,10 @@ Repeat Day 2 with progression`,
 Rest and recover (stretch, yoga, or mobility exercises)`
   };
 
-  // State management
+  // State management with proper typing
   const [profile, setProfile] = useState(() => JSON.parse(localStorage.getItem("profile") || "null"));
-  const [workoutPlan, setWorkoutPlan] = useState(() => JSON.parse(localStorage.getItem("workoutPlan") || JSON.stringify(defaultWorkoutPlan)));
-  const [workoutRecords, setWorkoutRecords] = useState(() => JSON.parse(localStorage.getItem("workoutRecords") || "{}"));
+  const [workoutPlan, setWorkoutPlan] = useState<WorkoutPlan>(() => JSON.parse(localStorage.getItem("workoutPlan") || JSON.stringify(defaultWorkoutPlan)));
+  const [workoutRecords, setWorkoutRecords] = useState<WorkoutRecords>(() => JSON.parse(localStorage.getItem("workoutRecords") || "{}"));
   const [tipsContent, setTipsContent] = useState(() => localStorage.getItem("tipsContent") || "Default fitness tips...");
   const [pictures, setPictures] = useState(() => JSON.parse(localStorage.getItem("pictures") || "[]"));
   const [isDarkMode, setIsDarkMode] = useState(() => localStorage.getItem("theme") === "dark");
@@ -100,7 +114,7 @@ Rest and recover (stretch, yoga, or mobility exercises)`
   };
 
   const recalcDaysWorkedOut = () => {
-    return Object.values(workoutRecords).filter((record: { status?: string }) => record?.status === "completed").length;
+    return Object.values(workoutRecords).filter((record: WorkoutRecord) => record?.status === "completed").length;
   };
 
   // Today's workout logic
@@ -412,7 +426,7 @@ Rest and recover (stretch, yoga, or mobility exercises)`
             </div>
             <div className="text-lg md:text-xl text-slate-300 mb-2 md:mb-3 font-medium">Today is {currentDay}</div>
             <h2 className="text-xl md:text-2xl font-bold mb-3 md:mb-4 text-white">Reset In:</h2>
-            <div className="text-3xl md:text-4xl font-black text-cyan-400 mb-3 md:mb-4 font-mono tracking-wider">{countdown}</div>
+            <div className="text-3xl md:text-4xl font-black text-cyan-400 mb-2 md:mb-4 font-mono tracking-wider">{countdown}</div>
             <div className="text-red-400 text-sm md:text-base font-medium">Auto-miss in: <span className="font-mono text-red-300">{missedTimer}</span></div>
           </Card>
 

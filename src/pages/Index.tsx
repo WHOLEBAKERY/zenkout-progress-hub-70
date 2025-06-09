@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -31,7 +31,7 @@ const Index = () => {
   const { toast } = useToast();
 
   // Default workout plan
-  const defaultWorkoutPlan = {
+  const defaultWorkoutPlan = useMemo(() => ({
     Monday: `**Day 1: Push (Chest, Shoulders, Triceps)**
 *Warm-Up:* 5-10 minutes light cardio & dynamic stretches
 1. Weighted Push-Ups (to failure) x 3
@@ -65,7 +65,7 @@ Repeat Day 1 with progression`,
 Repeat Day 2 with progression`,
     Sunday: `**Day 7: Rest / Recovery**
 Rest and recover (stretch, yoga, or mobility exercises)`
-  };
+  }), []);
 
   // State management with proper typing
   const [profile, setProfile] = useState(() => JSON.parse(localStorage.getItem("profile") || "null"));
@@ -97,35 +97,45 @@ Rest and recover (stretch, yoga, or mobility exercises)`
   const [editingWorkoutDay, setEditingWorkoutDay] = useState("");
   const [tempWorkoutContent, setTempWorkoutContent] = useState("");
 
-  // Utility functions
-  const getTodayKey = () => new Date().toISOString().split("T")[0];
-  const getCurrentDayName = () => {
+  // Countdown timer
+  const [countdown, setCountdown] = useState("");
+  const [missedTimer, setMissedTimer] = useState("");
+
+  // Memoized utility functions
+  const getTodayKey = useCallback(() => new Date().toISOString().split("T")[0], []);
+  
+  const getCurrentDayName = useCallback(() => {
     const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
     return days[new Date().getDay()];
-  };
+  }, []);
 
-  const saveLocalStorage = () => {
+  const recalcDaysWorkedOut = useMemo(() => {
+    return Object.values(workoutRecords).filter((record: WorkoutRecord) => record?.status === "completed").length;
+  }, [workoutRecords]);
+
+  // Memoized values
+  const todayKey = useMemo(() => getTodayKey(), [getTodayKey]);
+  const currentDay = useMemo(() => getCurrentDayName(), [getCurrentDayName]);
+  
+  const todaysRecord = useMemo(() => {
+    return workoutRecords[todayKey] || { 
+      workout: workoutPlan[currentDay] || "No workout assigned", 
+      status: "pending" 
+    };
+  }, [workoutRecords, todayKey, workoutPlan, currentDay]);
+
+  // Optimized save function
+  const saveLocalStorage = useCallback(() => {
     localStorage.setItem("profile", JSON.stringify(profile));
     localStorage.setItem("workoutPlan", JSON.stringify(workoutPlan));
     localStorage.setItem("workoutRecords", JSON.stringify(workoutRecords));
     localStorage.setItem("tipsContent", tipsContent);
     localStorage.setItem("pictures", JSON.stringify(pictures));
     localStorage.setItem("theme", isDarkMode ? "dark" : "light");
-  };
+  }, [profile, workoutPlan, workoutRecords, tipsContent, pictures, isDarkMode]);
 
-  const recalcDaysWorkedOut = () => {
-    return Object.values(workoutRecords).filter((record: WorkoutRecord) => record?.status === "completed").length;
-  };
-
-  // Today's workout logic
-  const todayKey = getTodayKey();
-  const currentDay = getCurrentDayName();
-  const todaysRecord = workoutRecords[todayKey] || { 
-    workout: workoutPlan[currentDay] || "No workout assigned", 
-    status: "pending" 
-  };
-
-  const handleWorkoutComplete = (checked: boolean) => {
+  // Memoized event handlers
+  const handleWorkoutComplete = useCallback((checked: boolean) => {
     const newRecords = { ...workoutRecords };
     newRecords[todayKey] = {
       ...todaysRecord,
@@ -139,9 +149,9 @@ Rest and recover (stretch, yoga, or mobility exercises)`
         description: "Great job finishing today's workout!",
       });
     }
-  };
+  }, [workoutRecords, todayKey, todaysRecord, toast]);
 
-  const handleRestDay = () => {
+  const handleRestDay = useCallback(() => {
     const newRecords = { ...workoutRecords };
     if (todaysRecord.status === "rest") {
       newRecords[todayKey] = {
@@ -163,12 +173,9 @@ Rest and recover (stretch, yoga, or mobility exercises)`
       });
     }
     setWorkoutRecords(newRecords);
-  };
+  }, [workoutRecords, todaysRecord, todayKey, workoutPlan, currentDay, toast]);
 
-  // Countdown timer
-  const [countdown, setCountdown] = useState("");
-  const [missedTimer, setMissedTimer] = useState("");
-
+  // Timer update with reduced frequency
   useEffect(() => {
     const updateTimers = () => {
       const now = new Date();
@@ -194,20 +201,21 @@ Rest and recover (stretch, yoga, or mobility exercises)`
     return () => clearInterval(interval);
   }, []);
 
-  // Save to localStorage whenever state changes
+  // Optimized localStorage save
   useEffect(() => {
-    saveLocalStorage();
-  }, [profile, workoutPlan, workoutRecords, tipsContent, pictures, isDarkMode]);
+    const timeoutId = setTimeout(saveLocalStorage, 300); // Debounce saves
+    return () => clearTimeout(timeoutId);
+  }, [saveLocalStorage]);
 
   // Initialize
   useEffect(() => {
     if (!profile) {
       setShowProfileModal(true);
     }
-  }, []);
+  }, [profile]);
 
   // Calendar rendering with improved mobile layout
-  const renderCalendar = () => {
+  const renderCalendar = useCallback(() => {
     const firstDay = new Date(calendarDisplayYear, calendarDisplayMonth, 1).getDay();
     const daysInMonth = new Date(calendarDisplayYear, calendarDisplayMonth + 1, 0).getDate();
     const cells = [];
@@ -261,14 +269,14 @@ Rest and recover (stretch, yoga, or mobility exercises)`
     }
 
     return cells;
-  };
+  }, [calendarDisplayYear, calendarDisplayMonth, workoutRecords, todayKey]);
 
-  const handleWorkoutPlanEdit = (day: string) => {
+  const handleWorkoutPlanEdit = useCallback((day: string) => {
     setEditingWorkoutDay(day);
     setTempWorkoutContent(workoutPlan[day] || "");
-  };
+  }, [workoutPlan]);
 
-  const handleWorkoutPlanSave = (day: string) => {
+  const handleWorkoutPlanSave = useCallback((day: string) => {
     const newWorkoutPlan = {
       ...workoutPlan,
       [day]: tempWorkoutContent
@@ -293,14 +301,14 @@ Rest and recover (stretch, yoga, or mobility exercises)`
       title: "Workout Plan Updated! ✅",
       description: `${day}'s workout has been successfully saved.`,
     });
-  };
+  }, [workoutPlan, tempWorkoutContent, currentDay, workoutRecords, todayKey, toast]);
 
-  const handleWorkoutPlanCancel = () => {
+  const handleWorkoutPlanCancel = useCallback(() => {
     setEditingWorkoutDay("");
     setTempWorkoutContent("");
-  };
+  }, []);
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       if (file.size > 5 * 1024 * 1024) { // 5MB limit
@@ -314,7 +322,7 @@ Rest and recover (stretch, yoga, or mobility exercises)`
       
       const reader = new FileReader();
       reader.onload = (evt) => {
-        setPictures([...pictures, evt.target?.result as string]);
+        setPictures(prev => [...prev, evt.target?.result as string]);
         toast({
           title: "Image uploaded! 📸",
           description: "Your progress photo has been added",
@@ -322,9 +330,9 @@ Rest and recover (stretch, yoga, or mobility exercises)`
       };
       reader.readAsDataURL(file);
     }
-  };
+  }, [toast]);
 
-  const exportData = () => {
+  const exportData = useCallback(() => {
     const data = { profile, workoutPlan, workoutRecords, tipsContent, pictures };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
@@ -338,14 +346,14 @@ Rest and recover (stretch, yoga, or mobility exercises)`
       title: "Data exported! 💾",
       description: "Your workout data has been downloaded",
     });
-  };
+  }, [profile, workoutPlan, workoutRecords, tipsContent, pictures, toast]);
 
-  const formatMarkdownContent = (content: string) => {
+  const formatMarkdownContent = useCallback((content: string) => {
     return content
       .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
       .replace(/\*(.*?)\*/g, '<em>$1</em>')
       .replace(/\n/g, '<br>');
-  };
+  }, []);
 
   return (
     <div className={`min-h-screen bg-gradient-to-br from-slate-950 via-indigo-950 to-slate-950 text-white transition-all duration-500 ${isDarkMode ? 'dark' : ''}`}>
@@ -436,7 +444,7 @@ Rest and recover (stretch, yoga, or mobility exercises)`
               <Activity className="w-8 h-8 md:w-10 md:h-10 text-white" />
             </div>
             <h2 className="text-xl md:text-2xl font-bold mb-4 md:mb-6 text-white">Days Worked Out</h2>
-            <div className="text-5xl md:text-7xl font-black text-emerald-400 mb-2 md:mb-3 tracking-tight">{recalcDaysWorkedOut()}</div>
+            <div className="text-5xl md:text-7xl font-black text-emerald-400 mb-2 md:mb-3 tracking-tight">{recalcDaysWorkedOut}</div>
             <div className="text-slate-300 text-sm md:text-base font-medium">Total completed workouts</div>
           </Card>
         </div>
@@ -544,12 +552,12 @@ Rest and recover (stretch, yoga, or mobility exercises)`
               {/* Improved mobile calendar layout */}
               <div className="grid grid-cols-7 gap-2 md:gap-4">
                 {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, index) => (
-                  <div key={day} className="text-center text-slate-400 font-bold text-sm md:text-lg p-2 md:p-3 hidden sm:block">
+                  <div key={`day-${index}`} className="text-center text-slate-400 font-bold text-sm md:text-lg p-2 md:p-3 hidden sm:block">
                     {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][index]}
                   </div>
                 ))}
-                {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map(day => (
-                  <div key={day} className="text-center text-slate-400 font-bold text-sm p-2 sm:hidden">
+                {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, index) => (
+                  <div key={`mobile-day-${index}`} className="text-center text-slate-400 font-bold text-sm p-2 sm:hidden">
                     {day}
                   </div>
                 ))}

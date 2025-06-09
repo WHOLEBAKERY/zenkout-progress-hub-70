@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Calendar, Download, Edit3, Upload, RefreshCw, Settings, Moon, Sun, Palette, Image, Smartphone, Monitor, User, Activity, Clock, Target } from 'lucide-react';
+import { Calendar, Download, Edit3, Upload, RefreshCw, Settings, Moon, Sun, Palette, Image, Smartphone, Monitor, User, Activity, Clock, Target, Save, X } from 'lucide-react';
 import ProfileModal from '@/components/ProfileModal';
 import ColorSchemeModal from '@/components/ColorSchemeModal';
 import DeveloperModal from '@/components/DeveloperModal';
@@ -82,6 +82,7 @@ Rest and recover (stretch, yoga, or mobility exercises)`
   const [showCalendar, setShowCalendar] = useState(true);
   const [editingTips, setEditingTips] = useState(false);
   const [editingWorkoutDay, setEditingWorkoutDay] = useState("");
+  const [tempWorkoutContent, setTempWorkoutContent] = useState("");
 
   // Utility functions
   const getTodayKey = () => new Date().toISOString().split("T")[0];
@@ -192,7 +193,7 @@ Rest and recover (stretch, yoga, or mobility exercises)`
     }
   }, []);
 
-  // Calendar rendering
+  // Calendar rendering with improved mobile layout
   const renderCalendar = () => {
     const firstDay = new Date(calendarDisplayYear, calendarDisplayMonth, 1).getDay();
     const daysInMonth = new Date(calendarDisplayYear, calendarDisplayMonth + 1, 0).getDate();
@@ -200,53 +201,90 @@ Rest and recover (stretch, yoga, or mobility exercises)`
 
     // Empty cells for days before month starts
     for (let i = 0; i < firstDay; i++) {
-      cells.push(<div key={`empty-${i}`} className="p-1 md:p-2"></div>);
+      cells.push(<div key={`empty-${i}`} className="aspect-square"></div>);
     }
 
     // Days of the month
     for (let d = 1; d <= daysInMonth; d++) {
       const cellDate = new Date(calendarDisplayYear, calendarDisplayMonth, d);
       const dateKey = cellDate.toISOString().split("T")[0];
-      const dayAbbr = cellDate.toLocaleDateString('en-US', { weekday: 'short' });
       const record = workoutRecords[dateKey];
       const isToday = dateKey === todayKey;
       
-      let bgColor = "bg-white/5 hover:bg-white/10";
-      let borderColor = "border-white/20";
-      let textColor = "text-gray-300";
+      let bgColor = "bg-slate-800/40 hover:bg-slate-700/60";
+      let borderColor = "border-slate-600/50";
+      let textColor = "text-slate-200";
       
       if (record?.status === "completed") {
-        bgColor = "bg-green-500/30 hover:bg-green-500/40";
-        borderColor = "border-green-400/50";
-        textColor = "text-green-100";
+        bgColor = "bg-emerald-500/30 hover:bg-emerald-500/50";
+        borderColor = "border-emerald-400/60";
+        textColor = "text-emerald-100";
       } else if (record?.status === "missed") {
-        bgColor = "bg-red-500/30 hover:bg-red-500/40";
-        borderColor = "border-red-400/50";
+        bgColor = "bg-red-500/30 hover:bg-red-500/50";
+        borderColor = "border-red-400/60";
         textColor = "text-red-100";
       } else if (record?.status === "rest") {
-        bgColor = "bg-purple-500/30 hover:bg-purple-500/40";
-        borderColor = "border-purple-400/50";
-        textColor = "text-purple-100";
+        bgColor = "bg-violet-500/30 hover:bg-violet-500/50";
+        borderColor = "border-violet-400/60";
+        textColor = "text-violet-100";
       }
 
       if (isToday) {
-        borderColor = "border-blue-400";
-        bgColor += " ring-2 ring-blue-400/50";
+        borderColor = "border-cyan-400 border-2";
+        bgColor += " ring-2 ring-cyan-400/40";
       }
 
       cells.push(
-        <div key={d} className={`p-1 md:p-3 rounded-lg md:rounded-xl border ${borderColor} ${bgColor} text-center relative hover:scale-105 transition-all duration-200 cursor-pointer group`}>
-          <div className="text-xs text-gray-400 absolute top-0.5 right-0.5 md:top-1 md:right-1">{dayAbbr}</div>
-          <div className={`font-semibold text-sm md:text-base ${textColor} ${isToday ? 'text-blue-300' : ''}`}>{d}</div>
-          {record?.status === "completed" && <div className="text-xs text-green-300 mt-0.5 md:mt-1">✓</div>}
-          {record?.status === "rest" && <div className="text-xs text-purple-300 mt-0.5 md:mt-1">💤</div>}
-          {record?.status === "missed" && <div className="text-xs text-red-300 mt-0.5 md:mt-1">✗</div>}
-          {isToday && <div className="text-xs text-blue-300 mt-0.5 md:mt-1">●</div>}
+        <div key={d} className={`aspect-square rounded-xl border ${borderColor} ${bgColor} text-center relative hover:scale-105 transition-all duration-300 cursor-pointer group flex flex-col items-center justify-center p-1`}>
+          <div className={`font-bold text-lg ${textColor} ${isToday ? 'text-cyan-300' : ''}`}>{d}</div>
+          <div className="flex gap-1 mt-1">
+            {record?.status === "completed" && <div className="text-emerald-400 text-lg">✓</div>}
+            {record?.status === "rest" && <div className="text-violet-400 text-lg">💤</div>}
+            {record?.status === "missed" && <div className="text-red-400 text-lg">✗</div>}
+            {isToday && <div className="text-cyan-400 text-lg">●</div>}
+          </div>
         </div>
       );
     }
 
     return cells;
+  };
+
+  const handleWorkoutPlanEdit = (day: string) => {
+    setEditingWorkoutDay(day);
+    setTempWorkoutContent(workoutPlan[day] || "");
+  };
+
+  const handleWorkoutPlanSave = (day: string) => {
+    const newWorkoutPlan = {
+      ...workoutPlan,
+      [day]: tempWorkoutContent
+    };
+    setWorkoutPlan(newWorkoutPlan);
+    setEditingWorkoutDay("");
+    setTempWorkoutContent("");
+    
+    // Update today's record if we're editing today's workout
+    if (day === currentDay) {
+      const newRecords = { ...workoutRecords };
+      if (newRecords[todayKey]) {
+        newRecords[todayKey] = {
+          ...newRecords[todayKey],
+          workout: tempWorkoutContent
+        };
+        setWorkoutRecords(newRecords);
+      }
+    }
+    
+    toast({
+      title: "Workout Plan Updated! ✅",
+      description: `${day}'s workout has been successfully saved.`,
+    });
+  };
+
+  const handleWorkoutPlanCancel = () => {
+    setEditingWorkoutDay("");
+    setTempWorkoutContent("");
   };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -289,13 +327,6 @@ Rest and recover (stretch, yoga, or mobility exercises)`
     });
   };
 
-  const handleWorkoutPlanUpdate = (day: string, content: string) => {
-    setWorkoutPlan({
-      ...workoutPlan,
-      [day]: content
-    });
-  };
-
   const formatMarkdownContent = (content: string) => {
     return content
       .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
@@ -304,63 +335,71 @@ Rest and recover (stretch, yoga, or mobility exercises)`
   };
 
   return (
-    <div className={`min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 text-white transition-all duration-500 ${isDarkMode ? 'dark' : ''}`}>
-      {/* Animated background overlay */}
-      <div className="fixed inset-0 bg-[url('https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=1920&h=1080&fit=crop')] bg-cover bg-center opacity-10 -z-10"></div>
-      <div className="fixed inset-0 bg-gradient-to-br from-blue-900/20 via-purple-900/30 to-slate-900/40 -z-10 animate-gradient"></div>
+    <div className={`min-h-screen bg-gradient-to-br from-slate-950 via-indigo-950 to-slate-950 text-white transition-all duration-500 ${isDarkMode ? 'dark' : ''}`}>
+      {/* Enhanced animated background overlay */}
+      <div className="fixed inset-0 bg-[url('https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=1920&h=1080&fit=crop')] bg-cover bg-center opacity-5 -z-10"></div>
+      <div className="fixed inset-0 bg-gradient-to-br from-cyan-900/20 via-violet-900/30 to-slate-900/40 -z-10 animate-gradient"></div>
+      
+      {/* Floating particles effect */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none -z-10">
+        <div className="absolute top-1/4 left-1/4 w-2 h-2 bg-cyan-400/20 rounded-full animate-ping"></div>
+        <div className="absolute top-3/4 right-1/4 w-1 h-1 bg-violet-400/30 rounded-full animate-pulse"></div>
+        <div className="absolute top-1/2 left-3/4 w-3 h-3 bg-emerald-400/10 rounded-full animate-bounce"></div>
+      </div>
       
       {/* Header */}
-      <header className="text-center py-6 md:py-12 animate-fade-in px-4">
-        <h1 className="text-4xl md:text-7xl font-bold bg-gradient-to-r from-blue-400 via-purple-500 to-pink-500 bg-clip-text text-transparent mb-2 md:mb-4 animate-gradient">
+      <header className="text-center py-8 md:py-16 animate-fade-in px-4">
+        <h1 className="text-5xl md:text-8xl font-black bg-gradient-to-r from-cyan-400 via-violet-500 to-emerald-400 bg-clip-text text-transparent mb-4 md:mb-6 animate-gradient tracking-tight">
           ZENKED
         </h1>
-        <p className="text-lg md:text-2xl text-gray-300 font-light">Your Personal Workout Portfolio</p>
-        <div className="flex justify-center items-center gap-2 mt-2 md:mt-4 text-xs md:text-sm text-gray-400">
-          <Activity className="w-3 h-3 md:w-4 md:h-4" />
-          <span>Track • Progress • Achieve</span>
+        <p className="text-xl md:text-3xl text-slate-300 font-light mb-2">Your Elite Workout Portfolio</p>
+        <div className="flex justify-center items-center gap-3 mt-4 md:mt-6 text-sm md:text-lg text-slate-400">
+          <Activity className="w-4 h-4 md:w-5 md:h-5 text-cyan-400" />
+          <span className="tracking-wide">TRACK • PROGRESS • DOMINATE</span>
+          <Activity className="w-4 h-4 md:w-5 md:h-5 text-emerald-400" />
         </div>
       </header>
 
       {/* Main Container */}
-      <div className="max-w-7xl mx-auto px-4 md:px-6 pb-6 md:pb-12 space-y-4 md:space-y-8">
+      <div className="max-w-7xl mx-auto px-4 md:px-6 pb-8 md:pb-16 space-y-6 md:space-y-10">
         
         {/* Mobile-first grid layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-10">
           
           {/* Profile Section */}
-          <Card className="backdrop-blur-xl bg-white/10 border-white/20 p-4 md:p-8 rounded-2xl md:rounded-3xl hover:bg-white/15 transition-all duration-300 hover:scale-[1.02] animate-fade-in-scale">
-            <div className="flex flex-col sm:flex-row items-center gap-4 md:gap-6">
+          <Card className="backdrop-blur-2xl bg-gradient-to-br from-slate-800/40 to-slate-900/60 border-slate-600/30 p-6 md:p-10 rounded-3xl md:rounded-4xl hover:bg-slate-800/60 transition-all duration-500 hover:scale-[1.02] animate-fade-in-scale shadow-2xl">
+            <div className="flex flex-col sm:flex-row items-center gap-6 md:gap-8">
               <div className="relative">
                 <img 
                   src={profile?.picture || "https://images.unsplash.com/photo-1633332755192-727a05c4013d?w=100&h=100&fit=crop&crop=face"} 
                   alt="Profile" 
-                  className="w-16 h-16 md:w-24 md:h-24 rounded-full border-3 border-blue-400 object-cover ring-4 ring-blue-400/30"
+                  className="w-20 h-20 md:w-28 md:h-28 rounded-full border-4 border-cyan-400 object-cover ring-4 ring-cyan-400/20 shadow-lg"
                 />
-                <div className="absolute -bottom-1 -right-1 md:-bottom-2 md:-right-2 bg-blue-500 rounded-full p-1 md:p-2">
-                  <User className="w-3 h-3 md:w-4 md:h-4 text-white" />
+                <div className="absolute -bottom-2 -right-2 md:-bottom-3 md:-right-3 bg-gradient-to-r from-cyan-500 to-violet-500 rounded-full p-2 md:p-3 shadow-lg">
+                  <User className="w-4 h-4 md:w-5 md:h-5 text-white" />
                 </div>
               </div>
               <div className="flex-1 text-center sm:text-left">
-                <div className="space-y-1 md:space-y-2 text-xs md:text-sm text-gray-300">
-                  <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
-                    <span className="font-medium text-white">Name:</span> 
-                    <span>{profile?.name || "Set up profile"}</span>
+                <div className="space-y-2 md:space-y-3 text-sm md:text-base text-slate-300">
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                    <span className="font-semibold text-white">Name:</span> 
+                    <span className="text-cyan-300">{profile?.name || "Set up profile"}</span>
                   </div>
-                  <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
-                    <span className="font-medium text-white">Age:</span> 
-                    <span>{profile?.age || "N/A"}</span>
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                    <span className="font-semibold text-white">Age:</span> 
+                    <span className="text-emerald-300">{profile?.age || "N/A"}</span>
                   </div>
-                  <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
-                    <span className="font-medium text-white">Height:</span> 
-                    <span>{profile?.height || "N/A"}</span>
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                    <span className="font-semibold text-white">Height:</span> 
+                    <span className="text-violet-300">{profile?.height || "N/A"}</span>
                   </div>
-                  <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
-                    <span className="font-medium text-white">Weight:</span> 
-                    <span>{profile?.weight || "N/A"}</span>
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                    <span className="font-semibold text-white">Weight:</span> 
+                    <span className="text-orange-300">{profile?.weight || "N/A"}</span>
                   </div>
                 </div>
-                <Button onClick={() => setShowProfileModal(true)} className="mt-3 md:mt-4 w-full sm:w-auto bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 border-0 shadow-lg text-xs md:text-sm">
-                  <Edit3 className="w-3 h-3 md:w-4 md:h-4 mr-1 md:mr-2" />
+                <Button onClick={() => setShowProfileModal(true)} className="mt-4 md:mt-6 w-full sm:w-auto bg-gradient-to-r from-cyan-500 to-violet-600 hover:from-cyan-600 hover:to-violet-700 border-0 shadow-xl text-sm md:text-base font-semibold">
+                  <Edit3 className="w-4 h-4 md:w-5 md:h-5 mr-2" />
                   Edit Profile
                 </Button>
               </div>
@@ -368,86 +407,86 @@ Rest and recover (stretch, yoga, or mobility exercises)`
           </Card>
 
           {/* Countdown Timer */}
-          <Card className="backdrop-blur-xl bg-white/10 border-white/20 p-4 md:p-8 rounded-2xl md:rounded-3xl text-center hover:bg-white/15 transition-all duration-300 animate-slide-up">
-            <div className="bg-gradient-to-r from-blue-500 to-cyan-500 rounded-full p-3 md:p-4 w-12 h-12 md:w-16 md:h-16 mx-auto mb-3 md:mb-4">
-              <Clock className="w-6 h-6 md:w-8 md:h-8 text-white" />
+          <Card className="backdrop-blur-2xl bg-gradient-to-br from-slate-800/40 to-slate-900/60 border-slate-600/30 p-6 md:p-10 rounded-3xl md:rounded-4xl text-center hover:bg-slate-800/60 transition-all duration-500 animate-slide-up shadow-2xl">
+            <div className="bg-gradient-to-r from-cyan-500 to-emerald-500 rounded-2xl p-4 md:p-5 w-16 h-16 md:w-20 md:h-20 mx-auto mb-4 md:mb-6 shadow-lg">
+              <Clock className="w-8 h-8 md:w-10 md:h-10 text-white" />
             </div>
-            <div className="text-sm md:text-lg text-gray-300 mb-1 md:mb-2">Today is {currentDay}</div>
-            <h2 className="text-lg md:text-xl font-semibold mb-2 md:mb-3 text-white">Reset In:</h2>
-            <div className="text-2xl md:text-3xl font-bold text-blue-400 mb-2 md:mb-3 font-mono">{countdown}</div>
-            <div className="text-red-400 text-xs md:text-sm">Auto-miss in: <span className="font-mono">{missedTimer}</span></div>
+            <div className="text-lg md:text-xl text-slate-300 mb-2 md:mb-3 font-medium">Today is {currentDay}</div>
+            <h2 className="text-xl md:text-2xl font-bold mb-3 md:mb-4 text-white">Reset In:</h2>
+            <div className="text-3xl md:text-4xl font-black text-cyan-400 mb-3 md:mb-4 font-mono tracking-wider">{countdown}</div>
+            <div className="text-red-400 text-sm md:text-base font-medium">Auto-miss in: <span className="font-mono text-red-300">{missedTimer}</span></div>
           </Card>
 
           {/* Days Worked Out */}
-          <Card className="backdrop-blur-xl bg-white/10 border-white/20 p-4 md:p-8 rounded-2xl md:rounded-3xl text-center hover:bg-white/15 transition-all duration-300 hover:scale-[1.02] animate-slide-up">
-            <div className="bg-gradient-to-r from-green-500 to-emerald-500 rounded-full p-3 md:p-4 w-12 h-12 md:w-16 md:h-16 mx-auto mb-3 md:mb-4">
-              <Activity className="w-6 h-6 md:w-8 md:h-8 text-white" />
+          <Card className="backdrop-blur-2xl bg-gradient-to-br from-slate-800/40 to-slate-900/60 border-slate-600/30 p-6 md:p-10 rounded-3xl md:rounded-4xl text-center hover:bg-slate-800/60 transition-all duration-500 hover:scale-[1.02] animate-slide-up shadow-2xl">
+            <div className="bg-gradient-to-r from-emerald-500 to-cyan-500 rounded-2xl p-4 md:p-5 w-16 h-16 md:w-20 md:h-20 mx-auto mb-4 md:mb-6 shadow-lg">
+              <Activity className="w-8 h-8 md:w-10 md:h-10 text-white" />
             </div>
-            <h2 className="text-lg md:text-xl font-semibold mb-3 md:mb-4 text-white">Days Worked Out</h2>
-            <div className="text-4xl md:text-6xl font-bold text-green-400 mb-1 md:mb-2">{recalcDaysWorkedOut()}</div>
-            <div className="text-gray-300 text-xs md:text-sm">Total completed workouts</div>
+            <h2 className="text-xl md:text-2xl font-bold mb-4 md:mb-6 text-white">Days Worked Out</h2>
+            <div className="text-5xl md:text-7xl font-black text-emerald-400 mb-2 md:mb-3 tracking-tight">{recalcDaysWorkedOut()}</div>
+            <div className="text-slate-300 text-sm md:text-base font-medium">Total completed workouts</div>
           </Card>
         </div>
 
         {/* Daily Workout - Full width */}
-        <Card className="backdrop-blur-xl bg-white/10 border-white/20 p-4 md:p-8 rounded-2xl md:rounded-3xl hover:bg-white/15 transition-all duration-300 animate-fade-in-scale">
-          <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-4 md:mb-6">
-            <div className="bg-gradient-to-r from-orange-500 to-red-500 rounded-full p-2 md:p-3 w-fit">
-              <Target className="w-5 h-5 md:w-6 md:h-6 text-white" />
+        <Card className="backdrop-blur-2xl bg-gradient-to-br from-slate-800/40 to-slate-900/60 border-slate-600/30 p-6 md:p-10 rounded-3xl md:rounded-4xl hover:bg-slate-800/60 transition-all duration-500 animate-fade-in-scale shadow-2xl">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-6 md:mb-8">
+            <div className="bg-gradient-to-r from-orange-500 to-red-500 rounded-2xl p-3 md:p-4 w-fit shadow-lg">
+              <Target className="w-6 h-6 md:w-8 md:h-8 text-white" />
             </div>
             <div className="flex-1">
-              <h2 className="text-xl md:text-2xl font-bold text-white">Today's Workout</h2>
-              <p className="text-gray-300">{currentDay}</p>
+              <h2 className="text-2xl md:text-3xl font-black text-white mb-1">Today's Workout</h2>
+              <p className="text-slate-300 text-lg">{currentDay}</p>
             </div>
           </div>
           
           <div 
-            className={`mb-4 md:mb-6 p-4 md:p-6 rounded-xl md:rounded-2xl transition-all duration-300 text-sm md:text-base ${
-              todaysRecord.status === "completed" ? "bg-green-500/20 border border-green-400/30 line-through" :
-              todaysRecord.status === "rest" ? "bg-purple-500/20 border border-purple-400/30 italic" :
-              todaysRecord.status === "missed" ? "bg-red-500/20 border border-red-400/30 line-through" :
-              "bg-white/5 border border-white/10"
+            className={`mb-6 md:mb-8 p-6 md:p-8 rounded-2xl md:rounded-3xl transition-all duration-300 text-sm md:text-base leading-relaxed ${
+              todaysRecord.status === "completed" ? "bg-emerald-500/20 border-2 border-emerald-400/40 line-through" :
+              todaysRecord.status === "rest" ? "bg-violet-500/20 border-2 border-violet-400/40 italic" :
+              todaysRecord.status === "missed" ? "bg-red-500/20 border-2 border-red-400/40 line-through" :
+              "bg-slate-700/30 border-2 border-slate-600/30"
             }`}
             dangerouslySetInnerHTML={{ __html: formatMarkdownContent(todaysRecord.workout) }}
           />
           
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 md:gap-4">
-            <label className="flex items-center gap-2 md:gap-3 cursor-pointer group flex-1">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 md:gap-6">
+            <label className="flex items-center gap-3 md:gap-4 cursor-pointer group flex-1">
               <Checkbox 
                 checked={todaysRecord.status === "completed"}
                 onCheckedChange={handleWorkoutComplete}
                 disabled={todaysRecord.status === "rest"}
-                className="w-4 h-4 md:w-5 md:h-5 border-2 border-green-400 data-[state=checked]:bg-green-500"
+                className="w-5 h-5 md:w-6 md:h-6 border-2 border-emerald-400 data-[state=checked]:bg-emerald-500 shadow-lg"
               />
-              <span className="font-medium text-white group-hover:text-green-300 transition-colors text-sm md:text-base">
+              <span className="font-semibold text-white group-hover:text-emerald-300 transition-colors text-base md:text-lg">
                 Mark Complete
               </span>
             </label>
             <Button 
               onClick={handleRestDay}
               variant="outline"
-              className="bg-transparent border-purple-400 text-purple-300 hover:bg-purple-500/20 hover:border-purple-300 text-sm md:text-base"
+              className="bg-transparent border-2 border-violet-400 text-violet-300 hover:bg-violet-500/20 hover:border-violet-300 text-base md:text-lg font-semibold px-6 py-3"
             >
               {todaysRecord.status === "rest" ? "Clear Rest Day" : "Rest Day"}
             </Button>
           </div>
         </Card>
 
-        {/* Calendar Section - Full width */}
-        <Card className="backdrop-blur-xl bg-white/10 border-white/20 p-4 md:p-8 rounded-2xl md:rounded-3xl hover:bg-white/15 transition-all duration-300 animate-fade-in">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4 md:mb-6">
-            <div className="flex items-center gap-3">
-              <div className="bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full p-2 md:p-3">
-                <Calendar className="w-5 h-5 md:w-6 md:h-6 text-white" />
+        {/* Calendar Section - Full width with improved mobile layout */}
+        <Card className="backdrop-blur-2xl bg-gradient-to-br from-slate-800/40 to-slate-900/60 border-slate-600/30 p-6 md:p-10 rounded-3xl md:rounded-4xl hover:bg-slate-800/60 transition-all duration-500 animate-fade-in shadow-2xl">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 md:mb-8">
+            <div className="flex items-center gap-4">
+              <div className="bg-gradient-to-r from-indigo-500 to-violet-500 rounded-2xl p-3 md:p-4 shadow-lg">
+                <Calendar className="w-6 h-6 md:w-8 md:h-8 text-white" />
               </div>
-              <h2 className="text-xl md:text-2xl font-bold text-white">Workout Calendar</h2>
+              <h2 className="text-2xl md:text-3xl font-black text-white">Workout Calendar</h2>
             </div>
-            <div className="flex gap-2 w-full sm:w-auto">
-              <Button onClick={() => setShowCalendar(!showCalendar)} variant="outline" size="sm" className="bg-white/10 border-white/20 text-white hover:bg-white/20 flex-1 sm:flex-none text-xs md:text-sm">
-                <Calendar className="w-3 h-3 md:w-4 md:h-4" />
+            <div className="flex gap-3 w-full sm:w-auto">
+              <Button onClick={() => setShowCalendar(!showCalendar)} variant="outline" size="sm" className="bg-slate-700/50 border-slate-500/50 text-white hover:bg-slate-600/50 flex-1 sm:flex-none text-sm md:text-base font-semibold">
+                <Calendar className="w-4 h-4 md:w-5 md:h-5 mr-2" />
                 {showCalendar ? "Hide" : "Show"}
               </Button>
-              <Button onClick={() => setShowCalendarModal(true)} variant="outline" size="sm" className="bg-white/10 border-white/20 text-white hover:bg-white/20 flex-1 sm:flex-none text-xs md:text-sm">
+              <Button onClick={() => setShowCalendarModal(true)} variant="outline" size="sm" className="bg-slate-700/50 border-slate-500/50 text-white hover:bg-slate-600/50 flex-1 sm:flex-none text-sm md:text-base font-semibold">
                 Full View
               </Button>
             </div>
@@ -455,7 +494,7 @@ Rest and recover (stretch, yoga, or mobility exercises)`
           
           {showCalendar && (
             <>
-              <div className="flex justify-between items-center mb-4 md:mb-6">
+              <div className="flex justify-between items-center mb-6 md:mb-8">
                 <Button 
                   onClick={() => {
                     let newMonth = calendarDisplayMonth - 1;
@@ -466,11 +505,11 @@ Rest and recover (stretch, yoga, or mobility exercises)`
                   }}
                   variant="outline" 
                   size="sm"
-                  className="bg-white/10 border-white/20 text-white hover:bg-white/20 text-xs md:text-sm"
+                  className="bg-slate-700/50 border-slate-500/50 text-white hover:bg-slate-600/50 text-sm md:text-base font-semibold px-4 py-2"
                 >
                   ← Previous
                 </Button>
-                <h3 className="text-lg md:text-xl font-semibold text-white text-center">
+                <h3 className="text-xl md:text-2xl font-bold text-white text-center">
                   {new Date(calendarDisplayYear, calendarDisplayMonth).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
                 </h3>
                 <Button 
@@ -483,14 +522,21 @@ Rest and recover (stretch, yoga, or mobility exercises)`
                   }}
                   variant="outline" 
                   size="sm"
-                  className="bg-white/10 border-white/20 text-white hover:bg-white/20 text-xs md:text-sm"
+                  className="bg-slate-700/50 border-slate-500/50 text-white hover:bg-slate-600/50 text-sm md:text-base font-semibold px-4 py-2"
                 >
                   Next →
                 </Button>
               </div>
-              <div className="grid grid-cols-7 gap-1 md:gap-3">
-                {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-                  <div key={day} className="text-center text-gray-400 font-medium text-xs md:text-sm p-1 md:p-2">
+              
+              {/* Improved mobile calendar layout */}
+              <div className="grid grid-cols-7 gap-2 md:gap-4">
+                {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, index) => (
+                  <div key={day} className="text-center text-slate-400 font-bold text-sm md:text-lg p-2 md:p-3 hidden sm:block">
+                    {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][index]}
+                  </div>
+                ))}
+                {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map(day => (
+                  <div key={day} className="text-center text-slate-400 font-bold text-sm p-2 sm:hidden">
                     {day}
                   </div>
                 ))}
@@ -500,45 +546,70 @@ Rest and recover (stretch, yoga, or mobility exercises)`
           )}
         </Card>
 
-        {/* Workout Plan Editor */}
-        <Card className="backdrop-blur-xl bg-white/10 border-white/20 p-4 md:p-8 rounded-2xl md:rounded-3xl hover:bg-white/15 transition-all duration-300 animate-fade-in">
-          <Button onClick={() => setShowWorkoutPlan(!showWorkoutPlan)} className="mb-4 md:mb-6 bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 shadow-lg text-sm md:text-base">
-            <Edit3 className="w-3 h-3 md:w-4 md:h-4 mr-1 md:mr-2" />
+        {/* Workout Plan Editor with improved editing interface */}
+        <Card className="backdrop-blur-2xl bg-gradient-to-br from-slate-800/40 to-slate-900/60 border-slate-600/30 p-6 md:p-10 rounded-3xl md:rounded-4xl hover:bg-slate-800/60 transition-all duration-500 animate-fade-in shadow-2xl">
+          <Button onClick={() => setShowWorkoutPlan(!showWorkoutPlan)} className="mb-6 md:mb-8 bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 shadow-xl text-base md:text-lg font-bold px-6 py-3">
+            <Edit3 className="w-5 h-5 md:w-6 md:h-6 mr-2" />
             {showWorkoutPlan ? "Hide" : "Edit"} Weekly Workout Plan
           </Button>
           
           {showWorkoutPlan && (
-            <div className="animate-slide-up space-y-4 md:space-y-6">
+            <div className="animate-slide-up space-y-6 md:space-y-8">
               {Object.entries(workoutPlan).map(([day, content]) => (
-                <div key={day} className="space-y-2 md:space-y-3">
+                <div key={day} className="space-y-4">
                   <div className="flex items-center justify-between">
-                    <h4 className="text-lg md:text-xl font-semibold text-white">{day}</h4>
-                    <Button
-                      onClick={() => setEditingWorkoutDay(editingWorkoutDay === day ? "" : day)}
-                      variant="outline"
-                      size="sm"
-                      className="bg-transparent border-blue-400 text-blue-300 hover:bg-blue-500/20 text-xs md:text-sm"
-                    >
-                      {editingWorkoutDay === day ? "Save" : "Edit"}
-                    </Button>
+                    <h4 className="text-xl md:text-2xl font-bold text-white">{day}</h4>
+                    <div className="flex gap-2">
+                      {editingWorkoutDay === day ? (
+                        <>
+                          <Button
+                            onClick={() => handleWorkoutPlanSave(day)}
+                            size="sm"
+                            className="bg-emerald-500 hover:bg-emerald-600 text-white font-semibold"
+                          >
+                            <Save className="w-4 h-4 mr-2" />
+                            Save
+                          </Button>
+                          <Button
+                            onClick={handleWorkoutPlanCancel}
+                            variant="outline"
+                            size="sm"
+                            className="bg-transparent border-red-400 text-red-300 hover:bg-red-500/20"
+                          >
+                            <X className="w-4 h-4 mr-2" />
+                            Cancel
+                          </Button>
+                        </>
+                      ) : (
+                        <Button
+                          onClick={() => handleWorkoutPlanEdit(day)}
+                          variant="outline"
+                          size="sm"
+                          className="bg-transparent border-cyan-400 text-cyan-300 hover:bg-cyan-500/20 font-semibold"
+                        >
+                          <Edit3 className="w-4 h-4 mr-2" />
+                          Edit
+                        </Button>
+                      )}
+                    </div>
                   </div>
                   
                   {editingWorkoutDay === day ? (
-                    <div className="space-y-2">
+                    <div className="space-y-3">
                       <Textarea
-                        value={content}
-                        onChange={(e) => handleWorkoutPlanUpdate(day, e.target.value)}
-                        className="bg-white/10 border-white/20 text-white min-h-[120px] md:min-h-[150px] resize-none text-sm md:text-base"
+                        value={tempWorkoutContent}
+                        onChange={(e) => setTempWorkoutContent(e.target.value)}
+                        className="bg-slate-700/50 border-slate-500/50 text-white min-h-[180px] md:min-h-[220px] resize-none text-sm md:text-base font-mono leading-relaxed"
                         placeholder={`Enter ${day}'s workout plan...
 Use **bold** for titles and *italic* for emphasis`}
                       />
-                      <div className="text-xs text-gray-400">
-                        <strong>Tip:</strong> Use **text** for bold, *text* for italic
+                      <div className="text-sm text-slate-400 bg-slate-800/30 p-3 rounded-lg">
+                        <strong>Formatting Tips:</strong> Use **text** for bold, *text* for italic
                       </div>
                     </div>
                   ) : (
                     <div 
-                      className="bg-white/5 border border-white/10 p-3 md:p-4 rounded-lg md:rounded-xl text-sm md:text-base leading-relaxed"
+                      className="bg-slate-700/30 border-2 border-slate-600/30 p-4 md:p-6 rounded-2xl text-sm md:text-base leading-relaxed"
                       dangerouslySetInnerHTML={{ __html: formatMarkdownContent(content) }}
                     />
                   )}
@@ -549,21 +620,21 @@ Use **bold** for titles and *italic* for emphasis`}
         </Card>
 
         {/* Tips and Pictures row */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-10">
           
           {/* Tips Section */}
-          <Card className="backdrop-blur-xl bg-white/10 border-white/20 p-4 md:p-8 rounded-2xl md:rounded-3xl hover:bg-white/15 transition-all duration-300 animate-fade-in">
-            <div className="flex flex-col sm:flex-row gap-3 mb-4 md:mb-6">
-              <Button onClick={() => setShowTips(!showTips)} className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 shadow-lg text-sm md:text-base">
+          <Card className="backdrop-blur-2xl bg-gradient-to-br from-slate-800/40 to-slate-900/60 border-slate-600/30 p-6 md:p-10 rounded-3xl md:rounded-4xl hover:bg-slate-800/60 transition-all duration-500 animate-fade-in shadow-2xl">
+            <div className="flex flex-col sm:flex-row gap-4 mb-6 md:mb-8">
+              <Button onClick={() => setShowTips(!showTips)} className="bg-gradient-to-r from-emerald-500 to-cyan-600 hover:from-emerald-600 hover:to-cyan-700 shadow-xl text-base md:text-lg font-bold">
                 {showTips ? "Hide Tips" : "Show Tips"}
               </Button>
               {showTips && (
                 <Button 
                   onClick={() => setEditingTips(!editingTips)} 
                   variant="outline"
-                  className="bg-transparent border-blue-400 text-blue-300 hover:bg-blue-500/20 text-sm md:text-base"
+                  className="bg-transparent border-2 border-cyan-400 text-cyan-300 hover:bg-cyan-500/20 text-base md:text-lg font-semibold"
                 >
-                  <Edit3 className="w-3 h-3 md:w-4 md:h-4 mr-1 md:mr-2" />
+                  <Edit3 className="w-4 h-4 md:w-5 md:h-5 mr-2" />
                   {editingTips ? "Cancel Edit" : "Edit Tips"}
                 </Button>
               )}
@@ -576,16 +647,16 @@ Use **bold** for titles and *italic* for emphasis`}
                     <Textarea 
                       value={tipsContent}
                       onChange={(e) => setTipsContent(e.target.value)}
-                      className="mb-3 md:mb-4 bg-white/10 border-white/20 text-white min-h-[150px] md:min-h-[200px] resize-none text-sm md:text-base"
+                      className="mb-4 md:mb-6 bg-slate-700/50 border-slate-500/50 text-white min-h-[200px] md:min-h-[250px] resize-none text-sm md:text-base leading-relaxed"
                       placeholder="Enter your fitness tips and notes here..."
                     />
-                    <Button onClick={() => setEditingTips(false)} className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-sm md:text-base">
+                    <Button onClick={() => setEditingTips(false)} className="bg-gradient-to-r from-cyan-500 to-violet-600 hover:from-cyan-600 hover:to-violet-700 text-base md:text-lg font-bold">
                       Save Tips
                     </Button>
                   </div>
                 ) : (
                   <div 
-                    className="prose prose-invert max-w-none text-gray-200 leading-relaxed text-sm md:text-base"
+                    className="prose prose-invert max-w-none text-slate-200 leading-relaxed text-sm md:text-base"
                     dangerouslySetInnerHTML={{ __html: tipsContent }}
                   />
                 )}
@@ -594,10 +665,10 @@ Use **bold** for titles and *italic* for emphasis`}
           </Card>
 
           {/* Pictures Section */}
-          <Card className="backdrop-blur-xl bg-white/10 border-white/20 p-4 md:p-8 rounded-2xl md:rounded-3xl hover:bg-white/15 transition-all duration-300 animate-fade-in">
-            <div className="flex items-center gap-3 mb-4 md:mb-6">
-              <Button onClick={() => setShowPics(!showPics)} className="bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 shadow-lg text-sm md:text-base">
-                <Image className="w-3 h-3 md:w-4 md:h-4 mr-1 md:mr-2" />
+          <Card className="backdrop-blur-2xl bg-gradient-to-br from-slate-800/40 to-slate-900/60 border-slate-600/30 p-6 md:p-10 rounded-3xl md:rounded-4xl hover:bg-slate-800/60 transition-all duration-500 animate-fade-in shadow-2xl">
+            <div className="flex items-center gap-4 mb-6 md:mb-8">
+              <Button onClick={() => setShowPics(!showPics)} className="bg-gradient-to-r from-violet-500 to-pink-600 hover:from-violet-600 hover:to-pink-700 shadow-xl text-base md:text-lg font-bold">
+                <Image className="w-4 h-4 md:w-5 md:h-5 mr-2" />
                 {showPics ? "Hide Progress Pics" : "Show Progress Pics"}
               </Button>
             </div>
@@ -608,15 +679,15 @@ Use **bold** for titles and *italic* for emphasis`}
                   type="file" 
                   accept="image/*"
                   onChange={handleImageUpload}
-                  className="mb-4 md:mb-6 bg-white/10 border-white/20 text-white file:bg-blue-500 file:text-white file:border-0 file:rounded-lg text-sm md:text-base"
+                  className="mb-6 md:mb-8 bg-slate-700/50 border-slate-500/50 text-white file:bg-cyan-500 file:text-white file:border-0 file:rounded-xl text-sm md:text-base"
                 />
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 md:gap-4">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4">
                   {pictures.map((pic, index) => (
                     <div key={index} className="relative group">
                       <img 
                         src={pic} 
                         alt={`Progress ${index + 1}`}
-                        className="w-full h-24 md:h-32 object-cover rounded-lg md:rounded-xl cursor-pointer hover:scale-105 transition-all duration-300 shadow-lg"
+                        className="w-full h-28 md:h-36 object-cover rounded-xl md:rounded-2xl cursor-pointer hover:scale-105 transition-all duration-300 shadow-xl"
                         onClick={() => {
                           setEnlargedImage(pic);
                           setShowImageModal(true);
@@ -624,7 +695,7 @@ Use **bold** for titles and *italic* for emphasis`}
                       />
                       <button 
                         onClick={() => setPictures(pictures.filter((_, i) => i !== index))}
-                        className="absolute top-1 right-1 md:top-2 md:right-2 bg-red-500 hover:bg-red-600 text-white rounded-full w-6 h-6 md:w-8 md:h-8 text-xs md:text-sm opacity-0 group-hover:opacity-100 transition-all duration-200 flex items-center justify-center"
+                        className="absolute top-2 right-2 md:top-3 md:right-3 bg-red-500 hover:bg-red-600 text-white rounded-full w-8 h-8 md:w-10 md:h-10 text-sm md:text-base opacity-0 group-hover:opacity-100 transition-all duration-200 flex items-center justify-center font-bold shadow-lg"
                       >
                         ×
                       </button>
@@ -637,40 +708,40 @@ Use **bold** for titles and *italic* for emphasis`}
         </div>
 
         {/* Controls - Full width */}
-        <Card className="backdrop-blur-xl bg-white/10 border-white/20 p-4 md:p-8 rounded-2xl md:rounded-3xl hover:bg-white/15 transition-all duration-300 animate-fade-in">
-          <h3 className="text-lg md:text-xl font-bold text-white mb-4 md:mb-6">App Controls</h3>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2 md:gap-4">
+        <Card className="backdrop-blur-2xl bg-gradient-to-br from-slate-800/40 to-slate-900/60 border-slate-600/30 p-6 md:p-10 rounded-3xl md:rounded-4xl hover:bg-slate-800/60 transition-all duration-500 animate-fade-in shadow-2xl">
+          <h3 className="text-xl md:text-2xl font-black text-white mb-6 md:mb-8">App Controls</h3>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 md:gap-4">
             <Button 
               onClick={exportData}
-              className="bg-gradient-to-r from-blue-500 to-cyan-600 hover:from-blue-600 hover:to-cyan-700 shadow-lg text-xs md:text-sm"
+              className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 shadow-xl text-sm md:text-base font-bold"
             >
-              <Download className="w-3 h-3 md:w-4 md:h-4 mr-1 md:mr-2" />
+              <Download className="w-4 h-4 md:w-5 md:h-5 mr-2" />
               Export
             </Button>
             
-            <Button onClick={() => setShowDeveloperModal(true)} className="bg-gradient-to-r from-gray-500 to-slate-600 hover:from-gray-600 hover:to-slate-700 shadow-lg text-xs md:text-sm">
-              <Settings className="w-3 h-3 md:w-4 md:h-4 mr-1 md:mr-2" />
+            <Button onClick={() => setShowDeveloperModal(true)} className="bg-gradient-to-r from-slate-500 to-slate-600 hover:from-slate-600 hover:to-slate-700 shadow-xl text-sm md:text-base font-bold">
+              <Settings className="w-4 h-4 md:w-5 md:h-5 mr-2" />
               Developer
             </Button>
             
             <Button 
               onClick={() => setIsDarkMode(!isDarkMode)}
-              className="bg-gradient-to-r from-yellow-500 to-orange-600 hover:from-yellow-600 hover:to-orange-700 shadow-lg text-xs md:text-sm"
+              className="bg-gradient-to-r from-yellow-500 to-orange-600 hover:from-yellow-600 hover:to-orange-700 shadow-xl text-sm md:text-base font-bold"
             >
-              {isDarkMode ? <Sun className="w-3 h-3 md:w-4 md:h-4 mr-1 md:mr-2" /> : <Moon className="w-3 h-3 md:w-4 md:h-4 mr-1 md:mr-2" />}
+              {isDarkMode ? <Sun className="w-4 h-4 md:w-5 md:h-5 mr-2" /> : <Moon className="w-4 h-4 md:w-5 md:h-5 mr-2" />}
               Theme
             </Button>
             
-            <Button onClick={() => setShowColorModal(true)} className="bg-gradient-to-r from-pink-500 to-rose-600 hover:from-pink-600 hover:to-rose-700 shadow-lg text-xs md:text-sm">
-              <Palette className="w-3 h-3 md:w-4 md:h-4 mr-1 md:mr-2" />
+            <Button onClick={() => setShowColorModal(true)} className="bg-gradient-to-r from-pink-500 to-rose-600 hover:from-pink-600 hover:to-rose-700 shadow-xl text-sm md:text-base font-bold">
+              <Palette className="w-4 h-4 md:w-5 md:h-5 mr-2" />
               Colors
             </Button>
             
             <Button 
               onClick={() => setIsMobileView(!isMobileView)}
-              className="bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 shadow-lg text-xs md:text-sm"
+              className="bg-gradient-to-r from-indigo-500 to-violet-600 hover:from-indigo-600 hover:to-violet-700 shadow-xl text-sm md:text-base font-bold"
             >
-              {isMobileView ? <Monitor className="w-3 h-3 md:w-4 md:h-4 mr-1 md:mr-2" /> : <Smartphone className="w-3 h-3 md:w-4 md:h-4 mr-1 md:mr-2" />}
+              {isMobileView ? <Monitor className="w-4 h-4 md:w-5 md:h-5 mr-2" /> : <Smartphone className="w-4 h-4 md:w-5 md:h-5 mr-2" />}
               Layout
             </Button>
             
@@ -681,9 +752,9 @@ Use **bold** for titles and *italic* for emphasis`}
                   window.location.reload();
                 }
               }}
-              className="bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 shadow-lg text-xs md:text-sm"
+              className="bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 shadow-xl text-sm md:text-base font-bold"
             >
-              <RefreshCw className="w-3 h-3 md:w-4 md:h-4 mr-1 md:mr-2" />
+              <RefreshCw className="w-4 h-4 md:w-5 md:h-5 mr-2" />
               Reset
             </Button>
           </div>

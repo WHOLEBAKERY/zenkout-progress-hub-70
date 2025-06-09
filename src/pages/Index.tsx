@@ -2,414 +2,563 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { 
-  Play, 
-  Calendar, 
-  TrendingUp, 
-  Users, 
-  Star, 
-  Download,
-  ChevronLeft,
-  ChevronRight,
-  Dumbbell,
-  Target,
-  Trophy,
-  Heart,
-  Zap,
-  Clock
-} from 'lucide-react';
-import WorkoutCard from '@/components/WorkoutCard';
-import ProgressChart from '@/components/ProgressChart';
-import TestimonialCarousel from '@/components/TestimonialCarousel';
-import ContactForm from '@/components/ContactForm';
+import { Checkbox } from "@/components/ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Calendar, Download, Edit3, Upload, RefreshCw, Settings, Moon, Sun, Palette, Image, Smartphone, Desktop } from 'lucide-react';
+import ProfileModal from '@/components/ProfileModal';
+import ColorSchemeModal from '@/components/ColorSchemeModal';
+import DeveloperModal from '@/components/DeveloperModal';
+import CalendarModal from '@/components/CalendarModal';
+import ImageModal from '@/components/ImageModal';
 
 const Index = () => {
-  const [currentTestimonial, setCurrentTestimonial] = useState(0);
-  const [selectedCategory, setSelectedCategory] = useState('all');
-  const [isVisible, setIsVisible] = useState(false);
+  // Default workout plan
+  const defaultWorkoutPlan = {
+    Monday: `<strong>Day 1: Push (Chest, Shoulders, Triceps)</strong><br>
+             <em>Warm-Up:</em> 5-10 minutes light cardio & dynamic stretches<br>
+             1. Weighted Push-Ups (to failure) x 3<br>
+             2. Incline/Decline Push-Ups (to failure) x 3<br>
+             3. Diamond Push-Ups x 3<br>
+             4. Overhead Tricep Extensions x 3 sets of 15<br>
+             5. Shoulder Press x 3 sets of 10-12<br>
+             <em>Abs:</em> Plank (1 min x 3), Leg Raises (15 reps x 3)`,
+    Tuesday: `<strong>Day 2: Pull (Back, Biceps)</strong><br>
+              <em>Warm-Up:</em> 5-10 minutes light cardio & dynamic stretches<br>
+              1. Pull-Ups/Assisted Pull-Ups x 3 sets<br>
+              2. Barbell/Dumbbell Rows x 3 sets of 10<br>
+              3. Bicep Curls x 3 sets of 12<br>
+              4. Cross Hammer Curls x 3 sets of 12<br>
+              5. Preacher Curls x 3 sets of 12<br>
+              <em>Abs:</em> Russian Twists (1 min x 3), Sit-Ups (20 reps x 3)`,
+    Wednesday: `<strong>Day 3: Legs & Core</strong><br>
+                <em>Warm-Up:</em> 5-10 minutes light cardio & leg swings<br>
+                1. Squats x 3 sets of 15<br>
+                2. Lunges x 3 sets of 12 (each leg)<br>
+                3. Step-Ups x 3 sets of 12<br>
+                4. Calf Raises x 3 sets of 20<br>
+                5. Leg Raises x 3 sets of 15<br>
+                <em>Core:</em> Plank (1 min x 3), Side Plank (30 sec each side)`,
+    Thursday: `<strong>Day 4: Active Rest / Cardio</strong><br>
+               Light cardio for 20-30 minutes<br>
+               Stretching and mobility work`,
+    Friday: `<strong>Day 5: Push (Chest, Shoulders, Triceps)</strong><br>
+             Repeat Day 1 with progression`,
+    Saturday: `<strong>Day 6: Pull (Back, Biceps)</strong><br>
+               Repeat Day 2 with progression`,
+    Sunday: `<strong>Day 7: Rest / Recovery</strong><br>
+             Rest and recover (stretch, yoga, or mobility exercises)`
+  };
+
+  // State management
+  const [profile, setProfile] = useState(() => JSON.parse(localStorage.getItem("profile") || "null"));
+  const [workoutPlan, setWorkoutPlan] = useState(() => JSON.parse(localStorage.getItem("workoutPlan") || JSON.stringify(defaultWorkoutPlan)));
+  const [workoutRecords, setWorkoutRecords] = useState(() => JSON.parse(localStorage.getItem("workoutRecords") || "{}"));
+  const [tipsContent, setTipsContent] = useState(() => localStorage.getItem("tipsContent") || "Default fitness tips...");
+  const [pictures, setPictures] = useState(() => JSON.parse(localStorage.getItem("pictures") || "[]"));
+  const [isDarkMode, setIsDarkMode] = useState(() => localStorage.getItem("theme") === "dark");
+  const [isMobileView, setIsMobileView] = useState(false);
+  
+  // Calendar state
+  const [calendarDisplayYear, setCalendarDisplayYear] = useState(new Date().getFullYear());
+  const [calendarDisplayMonth, setCalendarDisplayMonth] = useState(new Date().getMonth());
+  
+  // Modal states
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [showColorModal, setShowColorModal] = useState(false);
+  const [showDeveloperModal, setShowDeveloperModal] = useState(false);
+  const [showCalendarModal, setShowCalendarModal] = useState(false);
+  const [showImageModal, setShowImageModal] = useState(false);
+  const [enlargedImage, setEnlargedImage] = useState("");
+  
+  // Section visibility
+  const [showTips, setShowTips] = useState(false);
+  const [showPics, setShowPics] = useState(false);
+  const [showWorkoutPlan, setShowWorkoutPlan] = useState(false);
+  const [showCalendar, setShowCalendar] = useState(true);
+  const [editingTips, setEditingTips] = useState(false);
+
+  // Utility functions
+  const getTodayKey = () => new Date().toISOString().split("T")[0];
+  const getCurrentDayName = () => {
+    const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+    return days[new Date().getDay()];
+  };
+
+  const saveLocalStorage = () => {
+    localStorage.setItem("profile", JSON.stringify(profile));
+    localStorage.setItem("workoutPlan", JSON.stringify(workoutPlan));
+    localStorage.setItem("workoutRecords", JSON.stringify(workoutRecords));
+    localStorage.setItem("tipsContent", tipsContent);
+    localStorage.setItem("pictures", JSON.stringify(pictures));
+    localStorage.setItem("theme", isDarkMode ? "dark" : "light");
+  };
+
+  const recalcDaysWorkedOut = () => {
+    return Object.values(workoutRecords).filter((record: any) => record.status === "completed").length;
+  };
+
+  // Today's workout logic
+  const todayKey = getTodayKey();
+  const currentDay = getCurrentDayName();
+  const todaysRecord = workoutRecords[todayKey] || { 
+    workout: workoutPlan[currentDay] || "No workout assigned", 
+    status: "pending" 
+  };
+
+  const handleWorkoutComplete = (checked: boolean) => {
+    const newRecords = { ...workoutRecords };
+    newRecords[todayKey] = {
+      ...todaysRecord,
+      status: checked ? "completed" : "pending"
+    };
+    setWorkoutRecords(newRecords);
+  };
+
+  const handleRestDay = () => {
+    const newRecords = { ...workoutRecords };
+    if (todaysRecord.status === "rest") {
+      newRecords[todayKey] = {
+        workout: workoutPlan[currentDay] || "No workout assigned",
+        status: "pending"
+      };
+    } else {
+      newRecords[todayKey] = {
+        workout: "Rest Day",
+        status: "rest"
+      };
+    }
+    setWorkoutRecords(newRecords);
+  };
+
+  // Countdown timer
+  const [countdown, setCountdown] = useState("");
+  const [missedTimer, setMissedTimer] = useState("");
 
   useEffect(() => {
-    setIsVisible(true);
+    const updateTimers = () => {
+      const now = new Date();
+      const tomorrow = new Date(now);
+      tomorrow.setHours(24, 0, 0, 0);
+      const diff = tomorrow - now;
+      const hours = Math.floor(diff / (1000 * 60 * 60));
+      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+      const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+      setCountdown(`${hours}h ${minutes}m ${seconds}s`);
+
+      const missedTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 0, 0, 0);
+      if (now >= missedTime) missedTime.setDate(missedTime.getDate() + 1);
+      const missedDiff = missedTime - now;
+      const mHours = Math.floor(missedDiff / (1000 * 60 * 60));
+      const mMinutes = Math.floor((missedDiff % (1000 * 60 * 60)) / (1000 * 60));
+      const mSeconds = Math.floor((missedDiff % (1000 * 60)) / 1000);
+      setMissedTimer(`${mHours}h ${mMinutes}m ${mSeconds}s`);
+    };
+
+    updateTimers();
+    const interval = setInterval(updateTimers, 1000);
+    return () => clearInterval(interval);
   }, []);
 
-  const workoutCategories = [
-    { id: 'all', name: 'All Workouts', count: 12 },
-    { id: 'strength', name: 'Strength', count: 4 },
-    { id: 'hiit', name: 'HIIT', count: 3 },
-    { id: 'flexibility', name: 'Flexibility', count: 3 },
-    { id: 'endurance', name: 'Endurance', count: 2 }
-  ];
+  // Save to localStorage whenever state changes
+  useEffect(() => {
+    saveLocalStorage();
+  }, [profile, workoutPlan, workoutRecords, tipsContent, pictures, isDarkMode]);
 
-  const workouts = [
-    {
-      id: 1,
-      title: 'Upper Body Power',
-      description: 'Build strength in chest, shoulders, and arms with compound movements',
-      duration: '45 min',
-      difficulty: 'Intermediate',
-      category: 'strength',
-      image: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=400&h=300&fit=crop'
-    },
-    {
-      id: 2,
-      title: 'HIIT Cardio Blast',
-      description: 'High-intensity intervals for maximum calorie burn',
-      duration: '30 min',
-      difficulty: 'Advanced',
-      category: 'hiit',
-      image: 'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=400&h=300&fit=crop'
-    },
-    {
-      id: 3,
-      title: 'Morning Yoga Flow',
-      description: 'Gentle stretches to start your day with energy',
-      duration: '25 min',
-      difficulty: 'Beginner',
-      category: 'flexibility',
-      image: 'https://images.unsplash.com/photo-1506629905607-afb20c1384d4?w=400&h=300&fit=crop'
-    },
-    {
-      id: 4,
-      title: 'Lower Body Strength',
-      description: 'Target glutes, quads, and hamstrings for powerful legs',
-      duration: '50 min',
-      difficulty: 'Intermediate',
-      category: 'strength',
-      image: 'https://images.unsplash.com/photo-1574680178050-55c6a6a96e0a?w=400&h=300&fit=crop'
-    },
-    {
-      id: 5,
-      title: 'Endurance Runner',
-      description: 'Build cardiovascular endurance and stamina',
-      duration: '40 min',
-      difficulty: 'Advanced',
-      category: 'endurance',
-      image: 'https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?w=400&h=300&fit=crop'
-    },
-    {
-      id: 6,
-      title: 'Core Stability',
-      description: 'Strengthen your core with targeted exercises',
-      duration: '20 min',
-      difficulty: 'Intermediate',
-      category: 'strength',
-      image: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=400&h=300&fit=crop'
+  // Initialize
+  useEffect(() => {
+    if (!profile) {
+      setShowProfileModal(true);
     }
-  ];
+  }, []);
 
-  const testimonials = [
-    {
-      name: 'Sarah Johnson',
-      role: 'Fitness Enthusiast',
-      content: 'ZENKED transformed my workout routine completely. The personalized plans and progress tracking kept me motivated every single day.',
-      avatar: 'https://images.unsplash.com/photo-1494790108755-2616b25a019c?w=100&h=100&fit=crop&crop=face',
-      rating: 5
-    },
-    {
-      name: 'Mike Chen',
-      role: 'Professional Athlete',
-      content: 'The variety of workouts and expert coaching helped me break through my fitness plateau. Incredible results in just 3 months.',
-      avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop&crop=face',
-      rating: 5
-    },
-    {
-      name: 'Emily Rodriguez',
-      role: 'Busy Professional',
-      content: 'Finally found a program that fits my schedule. The flexibility and efficiency of ZENKED workouts are unmatched.',
-      avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100&h=100&fit=crop&crop=face',
-      rating: 5
+  // Calendar rendering
+  const renderCalendar = () => {
+    const firstDay = new Date(calendarDisplayYear, calendarDisplayMonth, 1).getDay();
+    const daysInMonth = new Date(calendarDisplayYear, calendarDisplayMonth + 1, 0).getDate();
+    const cells = [];
+
+    // Empty cells for days before month starts
+    for (let i = 0; i < firstDay; i++) {
+      cells.push(<div key={`empty-${i}`} className="p-2"></div>);
     }
-  ];
 
-  const filteredWorkouts = selectedCategory === 'all' 
-    ? workouts 
-    : workouts.filter(workout => workout.category === selectedCategory);
+    // Days of the month
+    for (let d = 1; d <= daysInMonth; d++) {
+      const cellDate = new Date(calendarDisplayYear, calendarDisplayMonth, d);
+      const dateKey = cellDate.toISOString().split("T")[0];
+      const dayAbbr = cellDate.toLocaleDateString('en-US', { weekday: 'short' });
+      const record = workoutRecords[dateKey];
+      
+      let bgColor = "bg-white/10";
+      if (record?.status === "completed") bgColor = "bg-green-500/30";
+      else if (record?.status === "missed") bgColor = "bg-red-500/30";
+      else if (record?.status === "rest") bgColor = "bg-purple-500/30";
+
+      cells.push(
+        <div key={d} className={`p-2 rounded-lg border border-white/20 text-center relative hover:scale-105 transition-transform ${bgColor}`}>
+          <div className="text-xs text-gray-400 absolute top-1 right-1">{dayAbbr}</div>
+          <div className="text-white">{d}</div>
+        </div>
+      );
+    }
+
+    return cells;
+  };
 
   return (
-    <div className="min-h-screen bg-slate-900 text-white overflow-x-hidden">
-      {/* Hero Section */}
-      <section className="relative h-screen flex items-center justify-center overflow-hidden">
-        <div 
-          className="absolute inset-0 bg-cover bg-center bg-fixed"
-          style={{
-            backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)), url('https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=1920&h=1080&fit=crop')`
-          }}
-        />
-        <div className={`relative z-10 text-center px-6 transition-all duration-1000 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
-          <h1 className="text-6xl md:text-8xl font-bold mb-6 bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
-            ZENKED
-          </h1>
-          <p className="text-xl md:text-2xl mb-4 text-gray-200">
-            Workout Portfolio
-          </p>
-          <p className="text-lg md:text-xl mb-8 text-gray-300 max-w-2xl mx-auto">
-            Transform Your Body | Track Your Progress | Achieve Your Goals
-          </p>
-          <Button 
-            size="lg" 
-            className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white border-0 px-8 py-6 text-lg rounded-2xl shadow-2xl hover:shadow-blue-500/25 transition-all duration-300 hover:scale-105"
-          >
-            <Play className="mr-2 h-5 w-5" />
-            Get Started
-          </Button>
-        </div>
-      </section>
+    <div className={`min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 text-white p-5 ${isDarkMode ? 'dark' : ''}`}>
+      {/* Background overlay */}
+      <div className="fixed inset-0 bg-[url('https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=1920&h=1080&fit=crop')] bg-cover bg-center opacity-20 -z-10"></div>
+      
+      {/* Header */}
+      <header className="text-center mb-8">
+        <h1 className="text-6xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent mb-4">
+          ZENKED
+        </h1>
+        <p className="text-xl text-gray-300">Workout Portfolio</p>
+      </header>
 
-      {/* About & Philosophy Section */}
-      <section className="py-20 px-6">
-        <div className="max-w-6xl mx-auto">
-          <div className={`transition-all duration-1000 delay-200 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
-            <div className="grid md:grid-cols-2 gap-12 items-center mb-16">
-              <div>
-                <h2 className="text-4xl md:text-5xl font-bold mb-6 bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
-                  About ZENKED
-                </h2>
-                <p className="text-lg text-gray-300 mb-6 leading-relaxed">
-                  ZENKED is more than just a workout program - it's a complete fitness transformation system designed to help you achieve your peak physical potential through scientifically-backed training methods and personalized coaching.
-                </p>
-                <p className="text-lg text-gray-300 leading-relaxed">
-                  Our philosophy centers on sustainable progress, mind-body connection, and creating lasting healthy habits that extend far beyond the gym.
-                </p>
+      {/* Main Container */}
+      <div className={`max-w-7xl mx-auto grid gap-6 ${isMobileView ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3'}`}>
+        
+        {/* Profile Section */}
+        <Card className="backdrop-blur-lg bg-white/10 border-white/20 p-6 rounded-2xl">
+          <div className="flex items-center gap-4">
+            <img 
+              src={profile?.picture || "https://images.unsplash.com/photo-1633332755192-727a05c4013d?w=100&h=100&fit=crop&crop=face"} 
+              alt="Profile" 
+              className="w-20 h-20 rounded-full border-2 border-blue-400 object-cover"
+            />
+            <div className="flex-1">
+              <div className="text-sm text-gray-300">
+                <div><strong>Name:</strong> {profile?.name || "N/A"}</div>
+                <div><strong>Age:</strong> {profile?.age || "N/A"}</div>
+                <div><strong>Height:</strong> {profile?.height || "N/A"}</div>
+                <div><strong>Weight:</strong> {profile?.weight || "N/A"}</div>
               </div>
-              <div className="relative">
-                <Card className="backdrop-blur-lg bg-white/10 border-white/20 p-8 rounded-3xl shadow-2xl">
-                  <div className="flex items-center space-x-4 mb-6">
-                    <Avatar className="h-16 w-16 border-2 border-blue-400">
-                      <AvatarImage src="https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=100&h=100&fit=crop&crop=face" />
-                      <AvatarFallback>ZK</AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <h3 className="text-xl font-semibold text-white">Alex Thompson</h3>
-                      <p className="text-blue-400">Head Trainer & Founder</p>
-                    </div>
-                  </div>
-                  <p className="text-gray-300">
-                    "Every journey starts with a single step. At ZENKED, we make sure every step counts towards your ultimate transformation."
-                  </p>
-                </Card>
-              </div>
-            </div>
-
-            {/* Why ZENKED Features */}
-            <div className="grid md:grid-cols-3 gap-8">
-              <Card className="backdrop-blur-lg bg-white/10 border-white/20 p-8 rounded-3xl shadow-2xl hover:shadow-blue-500/20 transition-all duration-300 hover:scale-105">
-                <div className="text-center">
-                  <div className="w-16 h-16 bg-gradient-to-r from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-6">
-                    <Target className="h-8 w-8 text-white" />
-                  </div>
-                  <h3 className="text-xl font-semibold text-white mb-4">Personalized Plans</h3>
-                  <p className="text-gray-300 leading-relaxed">
-                    Tailored workout routines designed specifically for your fitness level, goals, and available time.
-                  </p>
-                </div>
-              </Card>
-              
-              <Card className="backdrop-blur-lg bg-white/10 border-white/20 p-8 rounded-3xl shadow-2xl hover:shadow-blue-500/20 transition-all duration-300 hover:scale-105">
-                <div className="text-center">
-                  <div className="w-16 h-16 bg-gradient-to-r from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-6">
-                    <TrendingUp className="h-8 w-8 text-white" />
-                  </div>
-                  <h3 className="text-xl font-semibold text-white mb-4">Progress Tracking</h3>
-                  <p className="text-gray-300 leading-relaxed">
-                    Advanced analytics and visual progress reports to keep you motivated and on track.
-                  </p>
-                </div>
-              </Card>
-              
-              <Card className="backdrop-blur-lg bg-white/10 border-white/20 p-8 rounded-3xl shadow-2xl hover:shadow-blue-500/20 transition-all duration-300 hover:scale-105">
-                <div className="text-center">
-                  <div className="w-16 h-16 bg-gradient-to-r from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-6">
-                    <Users className="h-8 w-8 text-white" />
-                  </div>
-                  <h3 className="text-xl font-semibold text-white mb-4">Expert Coaching</h3>
-                  <p className="text-gray-300 leading-relaxed">
-                    Professional guidance from certified trainers with years of experience in fitness transformation.
-                  </p>
-                </div>
-              </Card>
+              <Button onClick={() => setShowProfileModal(true)} className="mt-2 bg-blue-500 hover:bg-blue-600">
+                <Edit3 className="w-4 h-4 mr-2" />
+                Edit Profile
+              </Button>
             </div>
           </div>
-        </div>
-      </section>
+        </Card>
 
-      {/* Workout Library Section */}
-      <section className="py-20 px-6 bg-slate-800/50">
-        <div className="max-w-6xl mx-auto">
-          <div className={`transition-all duration-1000 delay-300 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
-            <div className="text-center mb-12">
-              <h2 className="text-4xl md:text-5xl font-bold mb-6 bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
-                Workout Library
-              </h2>
-              <p className="text-lg text-gray-300 max-w-2xl mx-auto">
-                Discover our comprehensive collection of expertly crafted workouts designed to challenge and transform you.
-              </p>
+        {/* Daily Workout */}
+        <Card className="backdrop-blur-lg bg-white/10 border-white/20 p-6 rounded-2xl">
+          <h2 className="text-xl font-semibold mb-4">Today's Workout - <em>{currentDay}</em></h2>
+          <div 
+            className={`mb-4 p-4 rounded-lg ${
+              todaysRecord.status === "completed" ? "bg-green-500/20 line-through" :
+              todaysRecord.status === "rest" ? "bg-purple-500/20 italic" :
+              todaysRecord.status === "missed" ? "bg-red-500/20 line-through" :
+              "bg-white/5"
+            }`}
+            dangerouslySetInnerHTML={{ __html: todaysRecord.workout }}
+          />
+          <div className="flex items-center gap-4">
+            <label className="flex items-center gap-2">
+              <Checkbox 
+                checked={todaysRecord.status === "completed"}
+                onCheckedChange={handleWorkoutComplete}
+                disabled={todaysRecord.status === "rest"}
+              />
+              Complete
+            </label>
+            <Button 
+              onClick={handleRestDay}
+              variant="outline"
+              className="bg-transparent border-purple-400 text-purple-300 hover:bg-purple-500/20"
+            >
+              {todaysRecord.status === "rest" ? "Clear Rest Day" : "Mark as Rest Day"}
+            </Button>
+          </div>
+        </Card>
+
+        {/* Countdown Timer */}
+        <Card className="backdrop-blur-lg bg-white/10 border-white/20 p-6 rounded-2xl text-center">
+          <div className="text-lg text-gray-300 mb-2">Today is {currentDay}</div>
+          <h2 className="text-xl font-semibold mb-2">Reset In:</h2>
+          <div className="text-2xl font-bold text-blue-400 mb-2">{countdown}</div>
+          <div className="text-red-400">Auto-miss in: {missedTimer}</div>
+        </Card>
+
+        {/* Days Worked Out */}
+        <Card className="backdrop-blur-lg bg-white/10 border-white/20 p-6 rounded-2xl text-center">
+          <h2 className="text-xl font-semibold mb-4">Days Worked Out</h2>
+          <div className="text-5xl font-bold text-green-400">{recalcDaysWorkedOut()}</div>
+        </Card>
+
+        {/* Calendar Section */}
+        <Card className="backdrop-blur-lg bg-white/10 border-white/20 p-6 rounded-2xl lg:col-span-2">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-semibold">Workout Calendar</h2>
+            <div className="flex gap-2">
+              <Button onClick={() => setShowCalendar(!showCalendar)} variant="outline" size="sm">
+                <Calendar className="w-4 h-4" />
+                Toggle
+              </Button>
+              <Button onClick={() => setShowCalendarModal(true)} variant="outline" size="sm">
+                Calendar Mode
+              </Button>
             </div>
-
-            {/* Category Filter */}
-            <div className="flex flex-wrap justify-center gap-4 mb-12">
-              {workoutCategories.map((category) => (
-                <Button
-                  key={category.id}
-                  variant={selectedCategory === category.id ? "default" : "outline"}
-                  onClick={() => setSelectedCategory(category.id)}
-                  className={`rounded-2xl px-6 py-3 transition-all duration-300 ${
-                    selectedCategory === category.id
-                      ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white border-0 shadow-lg'
-                      : 'bg-transparent border-white/20 text-gray-300 hover:border-blue-400 hover:text-blue-400'
-                  }`}
+          </div>
+          
+          {showCalendar && (
+            <>
+              <div className="flex justify-between items-center mb-4">
+                <Button 
+                  onClick={() => {
+                    let newMonth = calendarDisplayMonth - 1;
+                    let newYear = calendarDisplayYear;
+                    if (newMonth < 0) { newMonth = 11; newYear--; }
+                    setCalendarDisplayMonth(newMonth);
+                    setCalendarDisplayYear(newYear);
+                  }}
+                  variant="outline" 
+                  size="sm"
                 >
-                  {category.name}
-                  <Badge className="ml-2 bg-white/20 text-white border-0">
-                    {category.count}
-                  </Badge>
+                  Previous
                 </Button>
-              ))}
-            </div>
-
-            {/* Workout Grid */}
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {filteredWorkouts.map((workout, index) => (
-                <WorkoutCard key={workout.id} workout={workout} delay={index * 100} />
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Progress Tracker Section */}
-      <section className="py-20 px-6">
-        <div className="max-w-6xl mx-auto">
-          <div className={`transition-all duration-1000 delay-400 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
-            <div className="text-center mb-12">
-              <h2 className="text-4xl md:text-5xl font-bold mb-6 bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
-                Track Your Progress
-              </h2>
-              <p className="text-lg text-gray-300 max-w-2xl mx-auto">
-                Visualize your transformation journey with detailed analytics and progress tracking.
-              </p>
-            </div>
-
-            <div className="grid lg:grid-cols-2 gap-12 items-center">
-              <Card className="backdrop-blur-lg bg-white/10 border-white/20 p-8 rounded-3xl shadow-2xl">
-                <ProgressChart />
-              </Card>
-              
-              <div className="space-y-8">
-                <Card className="backdrop-blur-lg bg-white/10 border-white/20 p-6 rounded-3xl shadow-2xl">
-                  <div className="flex items-center space-x-4 mb-4">
-                    <div className="w-12 h-12 bg-gradient-to-r from-green-500 to-emerald-600 rounded-xl flex items-center justify-center">
-                      <Trophy className="h-6 w-6 text-white" />
-                    </div>
-                    <div>
-                      <h3 className="text-lg font-semibold text-white">Workouts Completed</h3>
-                      <p className="text-2xl font-bold text-green-400">127</p>
-                    </div>
-                  </div>
-                  <Progress value={85} className="h-2 bg-slate-700" />
-                </Card>
-
-                <Card className="backdrop-blur-lg bg-white/10 border-white/20 p-6 rounded-3xl shadow-2xl">
-                  <div className="flex items-center space-x-4 mb-4">
-                    <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-cyan-600 rounded-xl flex items-center justify-center">
-                      <Zap className="h-6 w-6 text-white" />
-                    </div>
-                    <div>
-                      <h3 className="text-lg font-semibold text-white">Calories Burned</h3>
-                      <p className="text-2xl font-bold text-blue-400">15,420</p>
-                    </div>
-                  </div>
-                  <Progress value={67} className="h-2 bg-slate-700" />
-                </Card>
-
-                <Card className="backdrop-blur-lg bg-white/10 border-white/20 p-6 rounded-3xl shadow-2xl">
-                  <div className="flex items-center space-x-4 mb-4">
-                    <div className="w-12 h-12 bg-gradient-to-r from-purple-500 to-pink-600 rounded-xl flex items-center justify-center">
-                      <Clock className="h-6 w-6 text-white" />
-                    </div>
-                    <div>
-                      <h3 className="text-lg font-semibold text-white">Total Hours</h3>
-                      <p className="text-2xl font-bold text-purple-400">94.5</p>
-                    </div>
-                  </div>
-                  <Progress value={72} className="h-2 bg-slate-700" />
-                </Card>
-
-                <Button className="w-full bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white border-0 py-4 rounded-2xl shadow-xl">
-                  <Download className="mr-2 h-5 w-5" />
-                  Export Progress Report
+                <h3 className="text-lg font-medium">
+                  {new Date(calendarDisplayYear, calendarDisplayMonth).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+                </h3>
+                <Button 
+                  onClick={() => {
+                    let newMonth = calendarDisplayMonth + 1;
+                    let newYear = calendarDisplayYear;
+                    if (newMonth > 11) { newMonth = 0; newYear++; }
+                    setCalendarDisplayMonth(newMonth);
+                    setCalendarDisplayYear(newYear);
+                  }}
+                  variant="outline" 
+                  size="sm"
+                >
+                  Next
                 </Button>
               </div>
-            </div>
-          </div>
-        </div>
-      </section>
+              <div className="grid grid-cols-7 gap-2">
+                {renderCalendar()}
+              </div>
+            </>
+          )}
+        </Card>
 
-      {/* Testimonials Section */}
-      <section className="py-20 px-6 bg-slate-800/50">
-        <div className="max-w-4xl mx-auto">
-          <div className={`transition-all duration-1000 delay-500 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
-            <div className="text-center mb-12">
-              <h2 className="text-4xl md:text-5xl font-bold mb-6 bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
-                Success Stories
-              </h2>
-              <p className="text-lg text-gray-300 max-w-2xl mx-auto">
-                Real transformations from real people who trusted ZENKED with their fitness journey.
-              </p>
-            </div>
-
-            <TestimonialCarousel testimonials={testimonials} />
-          </div>
-        </div>
-      </section>
-
-      {/* Contact & Sign-Up Section */}
-      <section className="py-20 px-6">
-        <div className="max-w-4xl mx-auto">
-          <div className={`transition-all duration-1000 delay-600 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
-            <div className="text-center mb-12">
-              <h2 className="text-4xl md:text-5xl font-bold mb-6 bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
-                Start Your Journey
-              </h2>
-              <p className="text-lg text-gray-300 max-w-2xl mx-auto">
-                Ready to transform your life? Get started with a personalized fitness plan today.
-              </p>
-            </div>
-
-            <ContactForm />
-          </div>
-        </div>
-      </section>
-
-      {/* Footer */}
-      <footer className="py-12 px-6 bg-slate-900 border-t border-slate-800">
-        <div className="max-w-6xl mx-auto text-center">
-          <h3 className="text-2xl font-bold mb-4 bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
-            ZENKED
-          </h3>
-          <p className="text-gray-400 mb-6">Transform Your Body | Track Your Progress | Achieve Your Goals</p>
-          <div className="flex justify-center space-x-6">
-            <Button variant="ghost" size="sm" className="text-gray-400 hover:text-blue-400">
-              Privacy Policy
+        {/* Tips Section */}
+        <Card className="backdrop-blur-lg bg-white/10 border-white/20 p-6 rounded-2xl lg:col-span-3">
+          <div className="flex gap-2 mb-4">
+            <Button onClick={() => setShowTips(!showTips)} className="bg-green-500 hover:bg-green-600">
+              {showTips ? "Hide Tips" : "Show Tips"}
             </Button>
-            <Button variant="ghost" size="sm" className="text-gray-400 hover:text-blue-400">
-              Terms of Service
+            {showTips && (
+              <Button 
+                onClick={() => setEditingTips(!editingTips)} 
+                variant="outline"
+                className="bg-transparent border-blue-400 text-blue-300"
+              >
+                <Edit3 className="w-4 h-4 mr-2" />
+                {editingTips ? "Cancel Edit" : "Edit Tips"}
+              </Button>
+            )}
+          </div>
+          
+          {showTips && (
+            <div>
+              {editingTips ? (
+                <div>
+                  <Textarea 
+                    value={tipsContent}
+                    onChange={(e) => setTipsContent(e.target.value)}
+                    className="mb-4 bg-white/10 border-white/20 text-white"
+                    rows={10}
+                  />
+                  <Button onClick={() => setEditingTips(false)} className="bg-blue-500 hover:bg-blue-600">
+                    Save Tips
+                  </Button>
+                </div>
+              ) : (
+                <div 
+                  className="prose prose-invert max-w-none"
+                  dangerouslySetInnerHTML={{ __html: tipsContent }}
+                />
+              )}
+            </div>
+          )}
+        </Card>
+
+        {/* Pictures Section */}
+        <Card className="backdrop-blur-lg bg-white/10 border-white/20 p-6 rounded-2xl lg:col-span-2">
+          <Button onClick={() => setShowPics(!showPics)} className="mb-4 bg-purple-500 hover:bg-purple-600">
+            {showPics ? "Hide Pics" : "Show Pics"}
+          </Button>
+          
+          {showPics && (
+            <div>
+              <Input 
+                type="file" 
+                accept="image/*"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (evt) => {
+                      setPictures([...pictures, evt.target?.result as string]);
+                    };
+                    reader.readAsDataURL(file);
+                  }
+                }}
+                className="mb-4 bg-white/10 border-white/20"
+              />
+              <div className="grid grid-cols-3 gap-4">
+                {pictures.map((pic, index) => (
+                  <div key={index} className="relative group">
+                    <img 
+                      src={pic} 
+                      alt={`Upload ${index}`}
+                      className="w-full h-24 object-cover rounded-lg cursor-pointer hover:scale-105 transition-transform"
+                      onClick={() => {
+                        setEnlargedImage(pic);
+                        setShowImageModal(true);
+                      }}
+                    />
+                    <button 
+                      onClick={() => setPictures(pictures.filter((_, i) => i !== index))}
+                      className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 text-xs opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </Card>
+
+        {/* Workout Plan Editor */}
+        <Card className="backdrop-blur-lg bg-white/10 border-white/20 p-6 rounded-2xl lg:col-span-3">
+          <Button onClick={() => setShowWorkoutPlan(!showWorkoutPlan)} className="mb-4 bg-orange-500 hover:bg-orange-600">
+            {showWorkoutPlan ? "Hide" : "Edit"} Weekly Workout Plan
+          </Button>
+          
+          {showWorkoutPlan && (
+            <div>
+              <Textarea 
+                value={JSON.stringify(workoutPlan, null, 2)}
+                onChange={(e) => {
+                  try {
+                    setWorkoutPlan(JSON.parse(e.target.value));
+                  } catch (err) {
+                    // Invalid JSON, don't update
+                  }
+                }}
+                className="mb-4 bg-white/10 border-white/20 text-white font-mono"
+                rows={15}
+              />
+            </div>
+          )}
+        </Card>
+
+        {/* Controls */}
+        <Card className="backdrop-blur-lg bg-white/10 border-white/20 p-6 rounded-2xl lg:col-span-3">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <Button 
+              onClick={() => {
+                const data = { profile, workoutPlan, workoutRecords, tipsContent, pictures };
+                const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = "zenkout_data.json";
+                a.click();
+                URL.revokeObjectURL(url);
+              }}
+              className="bg-blue-500 hover:bg-blue-600"
+            >
+              <Download className="w-4 h-4 mr-2" />
+              Save JSON
             </Button>
-            <Button variant="ghost" size="sm" className="text-gray-400 hover:text-blue-400">
-              Contact
+            
+            <Button onClick={() => setShowDeveloperModal(true)} className="bg-gray-500 hover:bg-gray-600">
+              <Settings className="w-4 h-4 mr-2" />
+              Developer
+            </Button>
+            
+            <Button 
+              onClick={() => setIsDarkMode(!isDarkMode)}
+              className="bg-yellow-500 hover:bg-yellow-600"
+            >
+              {isDarkMode ? <Sun className="w-4 h-4 mr-2" /> : <Moon className="w-4 h-4 mr-2" />}
+              Theme
+            </Button>
+            
+            <Button onClick={() => setShowColorModal(true)} className="bg-pink-500 hover:bg-pink-600">
+              <Palette className="w-4 h-4 mr-2" />
+              Colors
+            </Button>
+            
+            <Button 
+              onClick={() => setIsMobileView(!isMobileView)}
+              className="bg-indigo-500 hover:bg-indigo-600"
+            >
+              {isMobileView ? <Desktop className="w-4 h-4 mr-2" /> : <Smartphone className="w-4 h-4 mr-2" />}
+              View
+            </Button>
+            
+            <Button 
+              onClick={() => {
+                if (confirm("Reset all data?")) {
+                  localStorage.clear();
+                  window.location.reload();
+                }
+              }}
+              className="bg-red-500 hover:bg-red-600"
+            >
+              <RefreshCw className="w-4 h-4 mr-2" />
+              Reset
             </Button>
           </div>
-          <p className="text-gray-500 text-sm mt-6">
-            © 2024 ZENKED. All rights reserved.
-          </p>
-        </div>
-      </footer>
+        </Card>
+      </div>
+
+      {/* Modals */}
+      <ProfileModal 
+        show={showProfileModal}
+        onClose={() => setShowProfileModal(false)}
+        profile={profile}
+        onSave={setProfile}
+      />
+      
+      <ColorSchemeModal 
+        show={showColorModal}
+        onClose={() => setShowColorModal(false)}
+      />
+      
+      <DeveloperModal 
+        show={showDeveloperModal}
+        onClose={() => setShowDeveloperModal(false)}
+        workoutRecords={workoutRecords}
+        onSave={setWorkoutRecords}
+        workoutPlan={workoutPlan}
+      />
+      
+      <CalendarModal 
+        show={showCalendarModal}
+        onClose={() => setShowCalendarModal(false)}
+        workoutRecords={workoutRecords}
+        onMonthSelect={(year, month) => {
+          setCalendarDisplayYear(year);
+          setCalendarDisplayMonth(month);
+          setShowCalendarModal(false);
+        }}
+      />
+      
+      <ImageModal 
+        show={showImageModal}
+        onClose={() => setShowImageModal(false)}
+        imageSrc={enlargedImage}
+      />
     </div>
   );
 };

@@ -6,14 +6,17 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Calendar, Download, Edit3, Upload, RefreshCw, Settings, Moon, Sun, Palette, Image, Smartphone, Monitor } from 'lucide-react';
+import { Calendar, Download, Edit3, Upload, RefreshCw, Settings, Moon, Sun, Palette, Image, Smartphone, Monitor, User, Activity, Clock, Target } from 'lucide-react';
 import ProfileModal from '@/components/ProfileModal';
 import ColorSchemeModal from '@/components/ColorSchemeModal';
 import DeveloperModal from '@/components/DeveloperModal';
 import CalendarModal from '@/components/CalendarModal';
 import ImageModal from '@/components/ImageModal';
+import { useToast } from "@/hooks/use-toast";
 
 const Index = () => {
+  const { toast } = useToast();
+
   // Default workout plan
   const defaultWorkoutPlan = {
     Monday: `<strong>Day 1: Push (Chest, Shoulders, Triceps)</strong><br>
@@ -114,6 +117,13 @@ const Index = () => {
       status: checked ? "completed" : "pending"
     };
     setWorkoutRecords(newRecords);
+    
+    if (checked) {
+      toast({
+        title: "Workout Completed! 💪",
+        description: "Great job finishing today's workout!",
+      });
+    }
   };
 
   const handleRestDay = () => {
@@ -123,11 +133,19 @@ const Index = () => {
         workout: workoutPlan[currentDay] || "No workout assigned",
         status: "pending"
       };
+      toast({
+        title: "Rest Day Cleared",
+        description: "Back to regular workout schedule",
+      });
     } else {
       newRecords[todayKey] = {
         workout: "Rest Day",
         status: "rest"
       };
+      toast({
+        title: "Rest Day Set 😴",
+        description: "Recovery is just as important as training!",
+      });
     }
     setWorkoutRecords(newRecords);
   };
@@ -190,16 +208,39 @@ const Index = () => {
       const dateKey = cellDate.toISOString().split("T")[0];
       const dayAbbr = cellDate.toLocaleDateString('en-US', { weekday: 'short' });
       const record = workoutRecords[dateKey];
+      const isToday = dateKey === todayKey;
       
-      let bgColor = "bg-white/10";
-      if (record?.status === "completed") bgColor = "bg-green-500/30";
-      else if (record?.status === "missed") bgColor = "bg-red-500/30";
-      else if (record?.status === "rest") bgColor = "bg-purple-500/30";
+      let bgColor = "bg-white/5 hover:bg-white/10";
+      let borderColor = "border-white/20";
+      let textColor = "text-gray-300";
+      
+      if (record?.status === "completed") {
+        bgColor = "bg-green-500/30 hover:bg-green-500/40";
+        borderColor = "border-green-400/50";
+        textColor = "text-green-100";
+      } else if (record?.status === "missed") {
+        bgColor = "bg-red-500/30 hover:bg-red-500/40";
+        borderColor = "border-red-400/50";
+        textColor = "text-red-100";
+      } else if (record?.status === "rest") {
+        bgColor = "bg-purple-500/30 hover:bg-purple-500/40";
+        borderColor = "border-purple-400/50";
+        textColor = "text-purple-100";
+      }
+
+      if (isToday) {
+        borderColor = "border-blue-400";
+        bgColor += " ring-2 ring-blue-400/50";
+      }
 
       cells.push(
-        <div key={d} className={`p-2 rounded-lg border border-white/20 text-center relative hover:scale-105 transition-transform ${bgColor}`}>
+        <div key={d} className={`p-3 rounded-xl border ${borderColor} ${bgColor} text-center relative hover:scale-105 transition-all duration-200 cursor-pointer group`}>
           <div className="text-xs text-gray-400 absolute top-1 right-1">{dayAbbr}</div>
-          <div className="text-white">{d}</div>
+          <div className={`font-semibold ${textColor} ${isToday ? 'text-blue-300' : ''}`}>{d}</div>
+          {record?.status === "completed" && <div className="text-xs text-green-300 mt-1">✓</div>}
+          {record?.status === "rest" && <div className="text-xs text-purple-300 mt-1">💤</div>}
+          {record?.status === "missed" && <div className="text-xs text-red-300 mt-1">✗</div>}
+          {isToday && <div className="text-xs text-blue-300 mt-1">●</div>}
         </div>
       );
     }
@@ -207,38 +248,100 @@ const Index = () => {
     return cells;
   };
 
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) { // 5MB limit
+        toast({
+          title: "File too large",
+          description: "Please select an image smaller than 5MB",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      const reader = new FileReader();
+      reader.onload = (evt) => {
+        setPictures([...pictures, evt.target?.result as string]);
+        toast({
+          title: "Image uploaded! 📸",
+          description: "Your progress photo has been added",
+        });
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const exportData = () => {
+    const data = { profile, workoutPlan, workoutRecords, tipsContent, pictures };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `zenked_backup_${new Date().toISOString().split('T')[0]}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    
+    toast({
+      title: "Data exported! 💾",
+      description: "Your workout data has been downloaded",
+    });
+  };
+
   return (
-    <div className={`min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 text-white p-5 ${isDarkMode ? 'dark' : ''}`}>
-      {/* Background overlay */}
-      <div className="fixed inset-0 bg-[url('https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=1920&h=1080&fit=crop')] bg-cover bg-center opacity-20 -z-10"></div>
+    <div className={`min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 text-white transition-all duration-500 ${isDarkMode ? 'dark' : ''}`}>
+      {/* Animated background overlay */}
+      <div className="fixed inset-0 bg-[url('https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=1920&h=1080&fit=crop')] bg-cover bg-center opacity-10 -z-10"></div>
+      <div className="fixed inset-0 bg-gradient-to-br from-blue-900/20 via-purple-900/30 to-slate-900/40 -z-10 animate-gradient"></div>
       
       {/* Header */}
-      <header className="text-center mb-8">
-        <h1 className="text-6xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent mb-4">
+      <header className="text-center py-12 animate-fade-in">
+        <h1 className="text-7xl font-bold bg-gradient-to-r from-blue-400 via-purple-500 to-pink-500 bg-clip-text text-transparent mb-4 animate-gradient">
           ZENKED
         </h1>
-        <p className="text-xl text-gray-300">Workout Portfolio</p>
+        <p className="text-2xl text-gray-300 font-light">Your Personal Workout Portfolio</p>
+        <div className="flex justify-center items-center gap-2 mt-4 text-sm text-gray-400">
+          <Activity className="w-4 h-4" />
+          <span>Track • Progress • Achieve</span>
+        </div>
       </header>
 
       {/* Main Container */}
-      <div className={`max-w-7xl mx-auto grid gap-6 ${isMobileView ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3'}`}>
+      <div className={`max-w-7xl mx-auto px-6 pb-12 grid gap-8 ${isMobileView ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3'}`}>
         
         {/* Profile Section */}
-        <Card className="backdrop-blur-lg bg-white/10 border-white/20 p-6 rounded-2xl">
-          <div className="flex items-center gap-4">
-            <img 
-              src={profile?.picture || "https://images.unsplash.com/photo-1633332755192-727a05c4013d?w=100&h=100&fit=crop&crop=face"} 
-              alt="Profile" 
-              className="w-20 h-20 rounded-full border-2 border-blue-400 object-cover"
-            />
-            <div className="flex-1">
-              <div className="text-sm text-gray-300">
-                <div><strong>Name:</strong> {profile?.name || "N/A"}</div>
-                <div><strong>Age:</strong> {profile?.age || "N/A"}</div>
-                <div><strong>Height:</strong> {profile?.height || "N/A"}</div>
-                <div><strong>Weight:</strong> {profile?.weight || "N/A"}</div>
+        <Card className="backdrop-blur-xl bg-white/10 border-white/20 p-8 rounded-3xl hover:bg-white/15 transition-all duration-300 hover:scale-[1.02] animate-fade-in-scale">
+          <div className="flex items-center gap-6">
+            <div className="relative">
+              <img 
+                src={profile?.picture || "https://images.unsplash.com/photo-1633332755192-727a05c4013d?w=100&h=100&fit=crop&crop=face"} 
+                alt="Profile" 
+                className="w-24 h-24 rounded-full border-3 border-blue-400 object-cover ring-4 ring-blue-400/30"
+              />
+              <div className="absolute -bottom-2 -right-2 bg-blue-500 rounded-full p-2">
+                <User className="w-4 h-4 text-white" />
               </div>
-              <Button onClick={() => setShowProfileModal(true)} className="mt-2 bg-blue-500 hover:bg-blue-600">
+            </div>
+            <div className="flex-1">
+              <div className="space-y-2 text-sm text-gray-300">
+                <div className="flex items-center gap-2">
+                  <span className="font-medium text-white">Name:</span> 
+                  <span>{profile?.name || "Set up profile"}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="font-medium text-white">Age:</span> 
+                  <span>{profile?.age || "N/A"}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="font-medium text-white">Height:</span> 
+                  <span>{profile?.height || "N/A"}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="font-medium text-white">Weight:</span> 
+                  <span>{profile?.weight || "N/A"}</span>
+                </div>
+              </div>
+              <Button onClick={() => setShowProfileModal(true)} className="mt-4 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 border-0 shadow-lg">
                 <Edit3 className="w-4 h-4 mr-2" />
                 Edit Profile
               </Button>
@@ -247,68 +350,93 @@ const Index = () => {
         </Card>
 
         {/* Daily Workout */}
-        <Card className="backdrop-blur-lg bg-white/10 border-white/20 p-6 rounded-2xl">
-          <h2 className="text-xl font-semibold mb-4">Today's Workout - <em>{currentDay}</em></h2>
+        <Card className="backdrop-blur-xl bg-white/10 border-white/20 p-8 rounded-3xl hover:bg-white/15 transition-all duration-300 lg:col-span-2 animate-fade-in-scale">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="bg-gradient-to-r from-orange-500 to-red-500 rounded-full p-3">
+              <Target className="w-6 h-6 text-white" />
+            </div>
+            <div>
+              <h2 className="text-2xl font-bold text-white">Today's Workout</h2>
+              <p className="text-gray-300">{currentDay}</p>
+            </div>
+          </div>
+          
           <div 
-            className={`mb-4 p-4 rounded-lg ${
-              todaysRecord.status === "completed" ? "bg-green-500/20 line-through" :
-              todaysRecord.status === "rest" ? "bg-purple-500/20 italic" :
-              todaysRecord.status === "missed" ? "bg-red-500/20 line-through" :
-              "bg-white/5"
+            className={`mb-6 p-6 rounded-2xl transition-all duration-300 ${
+              todaysRecord.status === "completed" ? "bg-green-500/20 border border-green-400/30 line-through" :
+              todaysRecord.status === "rest" ? "bg-purple-500/20 border border-purple-400/30 italic" :
+              todaysRecord.status === "missed" ? "bg-red-500/20 border border-red-400/30 line-through" :
+              "bg-white/5 border border-white/10"
             }`}
             dangerouslySetInnerHTML={{ __html: todaysRecord.workout }}
           />
+          
           <div className="flex items-center gap-4">
-            <label className="flex items-center gap-2">
+            <label className="flex items-center gap-3 cursor-pointer group">
               <Checkbox 
                 checked={todaysRecord.status === "completed"}
                 onCheckedChange={handleWorkoutComplete}
                 disabled={todaysRecord.status === "rest"}
+                className="w-5 h-5 border-2 border-green-400 data-[state=checked]:bg-green-500"
               />
-              Complete
+              <span className="font-medium text-white group-hover:text-green-300 transition-colors">
+                Mark Complete
+              </span>
             </label>
             <Button 
               onClick={handleRestDay}
               variant="outline"
-              className="bg-transparent border-purple-400 text-purple-300 hover:bg-purple-500/20"
+              className="bg-transparent border-purple-400 text-purple-300 hover:bg-purple-500/20 hover:border-purple-300"
             >
-              {todaysRecord.status === "rest" ? "Clear Rest Day" : "Mark as Rest Day"}
+              {todaysRecord.status === "rest" ? "Clear Rest Day" : "Rest Day"}
             </Button>
           </div>
         </Card>
 
         {/* Countdown Timer */}
-        <Card className="backdrop-blur-lg bg-white/10 border-white/20 p-6 rounded-2xl text-center">
+        <Card className="backdrop-blur-xl bg-white/10 border-white/20 p-8 rounded-3xl text-center hover:bg-white/15 transition-all duration-300 animate-slide-up">
+          <div className="bg-gradient-to-r from-blue-500 to-cyan-500 rounded-full p-4 w-16 h-16 mx-auto mb-4">
+            <Clock className="w-8 h-8 text-white" />
+          </div>
           <div className="text-lg text-gray-300 mb-2">Today is {currentDay}</div>
-          <h2 className="text-xl font-semibold mb-2">Reset In:</h2>
-          <div className="text-2xl font-bold text-blue-400 mb-2">{countdown}</div>
-          <div className="text-red-400">Auto-miss in: {missedTimer}</div>
+          <h2 className="text-xl font-semibold mb-3 text-white">Reset In:</h2>
+          <div className="text-3xl font-bold text-blue-400 mb-3 font-mono">{countdown}</div>
+          <div className="text-red-400 text-sm">Auto-miss in: <span className="font-mono">{missedTimer}</span></div>
         </Card>
 
         {/* Days Worked Out */}
-        <Card className="backdrop-blur-lg bg-white/10 border-white/20 p-6 rounded-2xl text-center">
-          <h2 className="text-xl font-semibold mb-4">Days Worked Out</h2>
-          <div className="text-5xl font-bold text-green-400">{recalcDaysWorkedOut()}</div>
+        <Card className="backdrop-blur-xl bg-white/10 border-white/20 p-8 rounded-3xl text-center hover:bg-white/15 transition-all duration-300 hover:scale-[1.02] animate-slide-up">
+          <div className="bg-gradient-to-r from-green-500 to-emerald-500 rounded-full p-4 w-16 h-16 mx-auto mb-4">
+            <Activity className="w-8 h-8 text-white" />
+          </div>
+          <h2 className="text-xl font-semibold mb-4 text-white">Days Worked Out</h2>
+          <div className="text-6xl font-bold text-green-400 mb-2">{recalcDaysWorkedOut()}</div>
+          <div className="text-gray-300 text-sm">Total completed workouts</div>
         </Card>
 
         {/* Calendar Section */}
-        <Card className="backdrop-blur-lg bg-white/10 border-white/20 p-6 rounded-2xl lg:col-span-2">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-semibold">Workout Calendar</h2>
+        <Card className="backdrop-blur-xl bg-white/10 border-white/20 p-8 rounded-3xl hover:bg-white/15 transition-all duration-300 lg:col-span-2 animate-fade-in">
+          <div className="flex justify-between items-center mb-6">
+            <div className="flex items-center gap-3">
+              <div className="bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full p-3">
+                <Calendar className="w-6 h-6 text-white" />
+              </div>
+              <h2 className="text-2xl font-bold text-white">Workout Calendar</h2>
+            </div>
             <div className="flex gap-2">
-              <Button onClick={() => setShowCalendar(!showCalendar)} variant="outline" size="sm">
+              <Button onClick={() => setShowCalendar(!showCalendar)} variant="outline" size="sm" className="bg-white/10 border-white/20 text-white hover:bg-white/20">
                 <Calendar className="w-4 h-4" />
-                Toggle
+                {showCalendar ? "Hide" : "Show"}
               </Button>
-              <Button onClick={() => setShowCalendarModal(true)} variant="outline" size="sm">
-                Calendar Mode
+              <Button onClick={() => setShowCalendarModal(true)} variant="outline" size="sm" className="bg-white/10 border-white/20 text-white hover:bg-white/20">
+                Full View
               </Button>
             </div>
           </div>
           
           {showCalendar && (
             <>
-              <div className="flex justify-between items-center mb-4">
+              <div className="flex justify-between items-center mb-6">
                 <Button 
                   onClick={() => {
                     let newMonth = calendarDisplayMonth - 1;
@@ -319,10 +447,11 @@ const Index = () => {
                   }}
                   variant="outline" 
                   size="sm"
+                  className="bg-white/10 border-white/20 text-white hover:bg-white/20"
                 >
-                  Previous
+                  ← Previous
                 </Button>
-                <h3 className="text-lg font-medium">
+                <h3 className="text-xl font-semibold text-white">
                   {new Date(calendarDisplayYear, calendarDisplayMonth).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
                 </h3>
                 <Button 
@@ -335,11 +464,17 @@ const Index = () => {
                   }}
                   variant="outline" 
                   size="sm"
+                  className="bg-white/10 border-white/20 text-white hover:bg-white/20"
                 >
-                  Next
+                  Next →
                 </Button>
               </div>
-              <div className="grid grid-cols-7 gap-2">
+              <div className="grid grid-cols-7 gap-3">
+                {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
+                  <div key={day} className="text-center text-gray-400 font-medium text-sm p-2">
+                    {day}
+                  </div>
+                ))}
                 {renderCalendar()}
               </div>
             </>
@@ -347,16 +482,16 @@ const Index = () => {
         </Card>
 
         {/* Tips Section */}
-        <Card className="backdrop-blur-lg bg-white/10 border-white/20 p-6 rounded-2xl lg:col-span-3">
-          <div className="flex gap-2 mb-4">
-            <Button onClick={() => setShowTips(!showTips)} className="bg-green-500 hover:bg-green-600">
+        <Card className="backdrop-blur-xl bg-white/10 border-white/20 p-8 rounded-3xl hover:bg-white/15 transition-all duration-300 lg:col-span-3 animate-fade-in">
+          <div className="flex gap-3 mb-6">
+            <Button onClick={() => setShowTips(!showTips)} className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 shadow-lg">
               {showTips ? "Hide Tips" : "Show Tips"}
             </Button>
             {showTips && (
               <Button 
                 onClick={() => setEditingTips(!editingTips)} 
                 variant="outline"
-                className="bg-transparent border-blue-400 text-blue-300"
+                className="bg-transparent border-blue-400 text-blue-300 hover:bg-blue-500/20"
               >
                 <Edit3 className="w-4 h-4 mr-2" />
                 {editingTips ? "Cancel Edit" : "Edit Tips"}
@@ -365,22 +500,22 @@ const Index = () => {
           </div>
           
           {showTips && (
-            <div>
+            <div className="animate-slide-up">
               {editingTips ? (
                 <div>
                   <Textarea 
                     value={tipsContent}
                     onChange={(e) => setTipsContent(e.target.value)}
-                    className="mb-4 bg-white/10 border-white/20 text-white"
-                    rows={10}
+                    className="mb-4 bg-white/10 border-white/20 text-white min-h-[200px] resize-none"
+                    placeholder="Enter your fitness tips and notes here..."
                   />
-                  <Button onClick={() => setEditingTips(false)} className="bg-blue-500 hover:bg-blue-600">
+                  <Button onClick={() => setEditingTips(false)} className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700">
                     Save Tips
                   </Button>
                 </div>
               ) : (
                 <div 
-                  className="prose prose-invert max-w-none"
+                  className="prose prose-invert max-w-none text-gray-200 leading-relaxed"
                   dangerouslySetInnerHTML={{ __html: tipsContent }}
                 />
               )}
@@ -389,35 +524,29 @@ const Index = () => {
         </Card>
 
         {/* Pictures Section */}
-        <Card className="backdrop-blur-lg bg-white/10 border-white/20 p-6 rounded-2xl lg:col-span-2">
-          <Button onClick={() => setShowPics(!showPics)} className="mb-4 bg-purple-500 hover:bg-purple-600">
-            {showPics ? "Hide Pics" : "Show Pics"}
-          </Button>
+        <Card className="backdrop-blur-xl bg-white/10 border-white/20 p-8 rounded-3xl hover:bg-white/15 transition-all duration-300 lg:col-span-2 animate-fade-in">
+          <div className="flex items-center gap-3 mb-6">
+            <Button onClick={() => setShowPics(!showPics)} className="bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 shadow-lg">
+              <Image className="w-4 h-4 mr-2" />
+              {showPics ? "Hide Progress Pics" : "Show Progress Pics"}
+            </Button>
+          </div>
           
           {showPics && (
-            <div>
+            <div className="animate-slide-up">
               <Input 
                 type="file" 
                 accept="image/*"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) {
-                    const reader = new FileReader();
-                    reader.onload = (evt) => {
-                      setPictures([...pictures, evt.target?.result as string]);
-                    };
-                    reader.readAsDataURL(file);
-                  }
-                }}
-                className="mb-4 bg-white/10 border-white/20"
+                onChange={handleImageUpload}
+                className="mb-6 bg-white/10 border-white/20 text-white file:bg-blue-500 file:text-white file:border-0 file:rounded-lg"
               />
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                 {pictures.map((pic, index) => (
                   <div key={index} className="relative group">
                     <img 
                       src={pic} 
-                      alt={`Upload ${index}`}
-                      className="w-full h-24 object-cover rounded-lg cursor-pointer hover:scale-105 transition-transform"
+                      alt={`Progress ${index + 1}`}
+                      className="w-full h-32 object-cover rounded-xl cursor-pointer hover:scale-105 transition-all duration-300 shadow-lg"
                       onClick={() => {
                         setEnlargedImage(pic);
                         setShowImageModal(true);
@@ -425,7 +554,7 @@ const Index = () => {
                     />
                     <button 
                       onClick={() => setPictures(pictures.filter((_, i) => i !== index))}
-                      className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 text-xs opacity-0 group-hover:opacity-100 transition-opacity"
+                      className="absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white rounded-full w-8 h-8 text-sm opacity-0 group-hover:opacity-100 transition-all duration-200 flex items-center justify-center"
                     >
                       ×
                     </button>
@@ -437,13 +566,14 @@ const Index = () => {
         </Card>
 
         {/* Workout Plan Editor */}
-        <Card className="backdrop-blur-lg bg-white/10 border-white/20 p-6 rounded-2xl lg:col-span-3">
-          <Button onClick={() => setShowWorkoutPlan(!showWorkoutPlan)} className="mb-4 bg-orange-500 hover:bg-orange-600">
+        <Card className="backdrop-blur-xl bg-white/10 border-white/20 p-8 rounded-3xl hover:bg-white/15 transition-all duration-300 lg:col-span-3 animate-fade-in">
+          <Button onClick={() => setShowWorkoutPlan(!showWorkoutPlan)} className="mb-6 bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 shadow-lg">
+            <Edit3 className="w-4 h-4 mr-2" />
             {showWorkoutPlan ? "Hide" : "Edit"} Weekly Workout Plan
           </Button>
           
           {showWorkoutPlan && (
-            <div>
+            <div className="animate-slide-up">
               <Textarea 
                 value={JSON.stringify(workoutPlan, null, 2)}
                 onChange={(e) => {
@@ -453,67 +583,59 @@ const Index = () => {
                     // Invalid JSON, don't update
                   }
                 }}
-                className="mb-4 bg-white/10 border-white/20 text-white font-mono"
-                rows={15}
+                className="mb-4 bg-white/10 border-white/20 text-white font-mono text-sm min-h-[300px] resize-none"
+                placeholder="Edit your workout plan in JSON format..."
               />
             </div>
           )}
         </Card>
 
         {/* Controls */}
-        <Card className="backdrop-blur-lg bg-white/10 border-white/20 p-6 rounded-2xl lg:col-span-3">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <Card className="backdrop-blur-xl bg-white/10 border-white/20 p-8 rounded-3xl hover:bg-white/15 transition-all duration-300 lg:col-span-3 animate-fade-in">
+          <h3 className="text-xl font-bold text-white mb-6">App Controls</h3>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
             <Button 
-              onClick={() => {
-                const data = { profile, workoutPlan, workoutRecords, tipsContent, pictures };
-                const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement("a");
-                a.href = url;
-                a.download = "zenkout_data.json";
-                a.click();
-                URL.revokeObjectURL(url);
-              }}
-              className="bg-blue-500 hover:bg-blue-600"
+              onClick={exportData}
+              className="bg-gradient-to-r from-blue-500 to-cyan-600 hover:from-blue-600 hover:to-cyan-700 shadow-lg"
             >
               <Download className="w-4 h-4 mr-2" />
-              Save JSON
+              Export
             </Button>
             
-            <Button onClick={() => setShowDeveloperModal(true)} className="bg-gray-500 hover:bg-gray-600">
+            <Button onClick={() => setShowDeveloperModal(true)} className="bg-gradient-to-r from-gray-500 to-slate-600 hover:from-gray-600 hover:to-slate-700 shadow-lg">
               <Settings className="w-4 h-4 mr-2" />
               Developer
             </Button>
             
             <Button 
               onClick={() => setIsDarkMode(!isDarkMode)}
-              className="bg-yellow-500 hover:bg-yellow-600"
+              className="bg-gradient-to-r from-yellow-500 to-orange-600 hover:from-yellow-600 hover:to-orange-700 shadow-lg"
             >
               {isDarkMode ? <Sun className="w-4 h-4 mr-2" /> : <Moon className="w-4 h-4 mr-2" />}
               Theme
             </Button>
             
-            <Button onClick={() => setShowColorModal(true)} className="bg-pink-500 hover:bg-pink-600">
+            <Button onClick={() => setShowColorModal(true)} className="bg-gradient-to-r from-pink-500 to-rose-600 hover:from-pink-600 hover:to-rose-700 shadow-lg">
               <Palette className="w-4 h-4 mr-2" />
               Colors
             </Button>
             
             <Button 
               onClick={() => setIsMobileView(!isMobileView)}
-              className="bg-indigo-500 hover:bg-indigo-600"
+              className="bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 shadow-lg"
             >
               {isMobileView ? <Monitor className="w-4 h-4 mr-2" /> : <Smartphone className="w-4 h-4 mr-2" />}
-              View
+              Layout
             </Button>
             
             <Button 
               onClick={() => {
-                if (confirm("Reset all data?")) {
+                if (confirm("⚠️ This will delete ALL your data. Are you sure?")) {
                   localStorage.clear();
                   window.location.reload();
                 }
               }}
-              className="bg-red-500 hover:bg-red-600"
+              className="bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 shadow-lg"
             >
               <RefreshCw className="w-4 h-4 mr-2" />
               Reset

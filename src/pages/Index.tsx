@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -101,7 +100,7 @@ Rest and recover (stretch, yoga, or mobility exercises)`
   };
 
   const recalcDaysWorkedOut = () => {
-    return Object.values(workoutRecords).filter((record: any) => record.status === "completed").length;
+    return Object.values(workoutRecords).filter((record: any) => record?.status === "completed").length;
   };
 
   // Today's workout logic

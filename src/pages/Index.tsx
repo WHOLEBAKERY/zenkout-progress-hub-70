@@ -462,7 +462,7 @@ Rest and recover (stretch, yoga, or mobility exercises)`
           </div>
           
           <div 
-            className={`mb-6 md:mb-8 p-6 md:p-8 rounded-2xl md:rounded-3xl transition-all duration-300 text-sm md:text-base leading-relaxed ${
+            className={`mb-6 md:mb-8 p-6 md:p-8 rounded-2xl md:rounded-3xl transition-all duration-300 text-sm md:text-base leading-relaxed text-white [&_*]:text-white ${
               todaysRecord.status === "completed" ? "bg-emerald-500/20 border-2 border-emerald-400/40 line-through" :
               todaysRecord.status === "rest" ? "bg-violet-500/20 border-2 border-violet-400/40 italic" :
               todaysRecord.status === "missed" ? "bg-red-500/20 border-2 border-red-400/40 line-through" :
